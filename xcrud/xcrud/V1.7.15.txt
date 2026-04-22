@@ -1,0 +1,81 @@
+
+V1.7.16
+ - xcrud list grouping for relational fields
+ - BUG FIX - after edit in modal view, scroll disappears for bootstrap theme   
+ - bulk email function with smtp configuration in xcrud_config
+   $xcrud->send_email_public($to, $subject, $emailBody, $cc = array(), true);
+ - tabulator support in wordpress
+
+V1.7.15
+ - You can upload and play videos
+ - Turn on or off verification key - public static $autoclean_activate = false;
+ - Table Logging for all table action
+ - new translation command 
+   echo $xcrud->translate_external_text("welcome")
+    
+ - you can add confirmation message for most action
+   $xcrud->confirm_edit_action(true);
+   $xcrud->confirm_edit_action_msg("Want to proceed with editing?");
+   
+   $xcrud->confirm_add_action(true);
+   $xcrud->confirm_add_action_msg("Want to proceed with editing?");
+   
+ Bug
+ - Fixed an issue where you couldnt do inline edit in nested tabs
+ - Fix Comments Page
+ 
+V1.7.14
+ - Tabulator Relation Fixed
+V1.7.13
+ - Google Map api fixed to take in api key
+V1.7.12
+ - Bug Fix. Removed form validation on clicking return
+ - Toast Messages now added as a feature
+ - Field Arrangement & Grouping now added as a feature >> Beta Stage
+ - Bug fix for inline edit - not functional when $xcud-unset_edit is used
+ - Better Formating of tabulator action buttons to fit in table
+V1.7.11
+   - Addition of the feature to move next and previous in edit view 
+V1.7.10
+ - Fixed bug where inline editing caused an error on clicking on different cells
+ - Bulk delete when placed on the right had a bug where by on clicking the main checkbox never effected the rest.
+V1.7.9
+ - extra select column on button logic
+ - inline editing on multiple instances error
+V1.7.8
+ - Bulk edit added a last column erroniously - its been fixed
+ - Inline edit had a bug when columns were fewer than total table columns . Its been fixed
+ - New feature for inline edit to specify wheher single click or not
+V1.7.7
+ - Inline editing added as a feature
+V1.7.6
+ - Parsley Validator included as a feature.
+V1.7.5
+ - Bulk Action/Delete Implemented/Added as a feature
+V1.7.4
+ - Pagenation fixed. Was not working on some instances
+V1.7.3
+ -Improved Bootstrap 4 formating and UI issues correction
+V1.7.2
+ - action buttons not formatted well
+V1.7.1 
+ - side and modal edit mode added as a feature
+ - Bug fix on loading bar, not show on all instances
+ - Updates include
+ - Fixed Bug Bootstrap table was not contained in border. 
+ - No errors for php V 7.4
+ - Documentation included
+ - xlsx  download format now works
+ - pdf download now works
+ - Missing action buttons missing below any table fixed
+
+Changed Files
+- Themes Folder changed 
+    - 'xcrud/themes'
+- Plugins Folder Added/Changed 
+    - parsley
+    - xlsx.full.min.js
+    - xcrud.js
+    - jspdf.min.js
+    - jspdf.plugin.autotable.js
+        

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Responsive PDF Editor</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f0f0f0;
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: #333;
+      color: #fff;
+      padding: 8px;
+      z-index: 999;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    #toolbar button,
+    #toolbar label {
+      background: #555;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      flex: 1 1 auto;
+      text-align: center;
+      min-width: 100px;
+    }
+    #toolbar input[type="file"] {
+      display: none;
+    }
+
+    #pdf-container {
+      padding-top: 60px;
+      padding-bottom: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .page-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    canvas {
+      display: block;
+      width: 100% !important;
+      height: auto !important;
+      border: 1px solid #ccc;
+    }
+
+    .overlay-text, .overlay-img, .signature-box {
+      position: absolute;
+      z-index: 10;
+      cursor: move;
+      touch-action: none;
+    }
+    .overlay-text {
+      background: rgba(255,255,255,0.8);
+      border: 1px dashed #444;
+      padding: 4px 6px;
+      font-size: 14px;
+      min-width: 60px;
+    }
+    .overlay-img {
+      max-width: 150px;
+      max-height: 150px;
+    }
+    .draw-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 5;
+      pointer-events: none;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .signature-box {
+      background: white;
+      border: 2px solid #333;
+      padding: 5px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    .signature-box .top-bar {
+      cursor: move;
+      background: #eee;
+      padding: 5px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+    }
+    .signature-box canvas {
+      border: 1px solid #ccc;
+      touch-action: none;
+    }
+    .delete-btn {
+      background: red;
+      color: white;
+      border: none;
+      padding: 3px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      #toolbar button, #toolbar label {
+        font-size: 13px;
+        min-width: 80px;
+      }
+      .overlay-text { font-size: 13px; }
+    }
+    @media (max-width: 480px) {
+      #toolbar {
+        justify-content: space-around;
+      }
+      #toolbar button, #toolbar label {
+        font-size: 12px;
+        padding: 4px 8px;
+        min-width: 60px;
+      }
+      .overlay-text { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <button onclick="addText()">
+      <i class="fa fa-text-width"></i> Add Text
+    </button>
+    <label>
+      <i class="fa fa-image"></i> Image
+      <input type="file" id="imgInput" accept="image/*" />
+    </label>
+    <button onclick="addSignatureBox()">
+      <i class="fa fa-pencil"></i> Signature
+    </button>
+    <button onclick="location.reload()">
+     <i class="fa fa-refresh"></i> Refresh
+    </button>
+    <button onclick="downloadPDF()">
+      <i class="fa fa-download"></i> Download & Send
+    </button>
+  </div>
+
+  <div id="pdf-container"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const url = "{{ asset('public/' . $signature->pdf_path) }}";
+    const container = document.getElementById('pdf-container');
+    let pdfDoc;
+
+    pdfjsLib.getDocument(url).promise.then(pdf => {
+      pdfDoc = pdf;
+      for (let i = 1; i <= pdf.numPages; i++) renderPage(i);
+    });
+
+    function renderPage(pageNumber) {
+      pdfDoc.getPage(pageNumber).then(page => {
+        const scale = window.innerWidth > 768 ? 1.5 : 1;
+        const viewport = page.getViewport({ scale });
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'page-wrapper';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        page.render({ canvasContext: canvas.getContext('2d'), viewport });
+
+        const drawCanvas = document.createElement('canvas');
+        drawCanvas.className = 'draw-canvas';
+        drawCanvas.width = viewport.width;
+        drawCanvas.height = viewport.height;
+
+        wrapper.append(canvas, drawCanvas);
+        container.append(wrapper);
+      });
+    }
+
+    function addText() {
+      const page = document.querySelector('.page-wrapper');
+      if (!page) return;
+      const txt = document.createElement('div');
+      txt.className = 'overlay-text';
+      txt.contentEditable = true;
+      txt.textContent = '';
+      txt.style.left = '20px';
+      txt.style.top = '20px';
+      makeDraggable(txt);
+      page.append(txt);
+      txt.focus();
+    }
+
+    document.getElementById('imgInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const page = document.querySelector('.page-wrapper');
+        if (!page) return;
+        const img = document.createElement('img');
+        img.src = evt.target.result;
+        img.className = 'overlay-img';
+        img.style.left = '20px';
+        img.style.top = '20px';
+        makeDraggable(img);
+        page.append(img);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function makeDraggable(el) {
+      let dragging = false, offsetX, offsetY;
+      const start = e => {
+        dragging = true;
+        const evt = e.touches ? e.touches[0] : e;
+        const rect = el.getBoundingClientRect();
+        offsetX = evt.clientX - rect.left;
+        offsetY = evt.clientY - rect.top;
+        e.preventDefault();
+      };
+      const move = e => {
+        if (!dragging) return;
+        const evt = e.touches ? e.touches[0] : e;
+        const parentRect = el.parentElement.getBoundingClientRect();
+        el.style.left = (evt.clientX - parentRect.left - offsetX) + 'px';
+        el.style.top = (evt.clientY - parentRect.top - offsetY) + 'px';
+      };
+      const end = () => dragging = false;
+
+      el.addEventListener('mousedown', start);
+      el.addEventListener('touchstart', start, { passive: false });
+      document.addEventListener('mousemove', move);
+      document.addEventListener('touchmove', move, { passive: false });
+      document.addEventListener('mouseup', end);
+      document.addEventListener('touchend', end);
+    }
+function addSignatureBox() {
+  const page = document.querySelector('.page-wrapper');
+  if (!page) return;
+
+  const box = document.createElement('div');
+  box.className = 'signature-box';
+  box.style.left = '50px';
+  box.style.top = '100px';
+  box.style.position = 'absolute';
+
+  box.innerHTML = `
+    <div class="top-bar">
+      <span>Draw Signature</span>
+      <button class="delete-btn">X</button>
+    </div>
+    <canvas width="200" height="100"></canvas>
+  `;
+
+  page.appendChild(box);
+
+  const canvas = box.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  let hasDrawn = false;
+
+  const coords = e => {
+    const rect = canvas.getBoundingClientRect();
+    const evt = e.touches ? e.touches[0] : e;
+    return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+  };
+
+  const startDraw = e => {
+    drawing = true;
+    const { x, y } = coords(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    e.preventDefault();
+  };
+
+  const draw = e => {
+    if (!drawing) return;
+    const { x, y } = coords(e);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    hasDrawn = true;
+    e.preventDefault();
+  };
+
+  const endDraw = () => drawing = false;
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove', draw, { passive: false });
+  canvas.addEventListener('touchend', endDraw);
+
+  // When clicking outside, convert to image and allow drag
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!box.contains(e.target) && hasDrawn) {
+        const image = new Image();
+        image.src = canvas.toDataURL('image/png');
+        image.className = 'overlay-img';
+        image.style.left = box.style.left;
+        image.style.top = box.style.top;
+        page.appendChild(image);
+        makeDraggable(image);
+        box.remove();
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 100);
+
+  box.querySelector('.delete-btn').onclick = () => box.remove();
+}
+
+
+    function enableSignatureDrawing(canvas) {
+      const ctx = canvas.getContext('2d');
+      let drawing = false;
+      const coords = e => {
+        const rect = canvas.getBoundingClientRect();
+        const evt = e.touches ? e.touches[0] : e;
+        return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+      };
+
+      canvas.addEventListener('mousedown', e => {
+        drawing = true;
+        const { x, y } = coords(e);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      });
+      canvas.addEventListener('mousemove', e => {
+        if (!drawing) return;
+        const { x, y } = coords(e);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      });
+      canvas.addEventListener('mouseup', () => drawing = false);
+      canvas.addEventListener('mouseleave', () => drawing = false);
+
+      canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        drawing = true;
+        const { x, y } = coords(e);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      }, { passive: false });
+      canvas.addEventListener('touchmove', e => {
+        if (!drawing) return;
+        e.preventDefault();
+        const { x, y } = coords(e);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }, { passive: false });
+      canvas.addEventListener('touchend', () => drawing = false);
+      canvas.addEventListener('touchcancel', () => drawing = false);
+    }
+
+    async function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const pages = document.querySelectorAll('.page-wrapper');
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        const canvas = await html2canvas(pages[i], { backgroundColor: '#fff', scale: 2 });
+        const img = canvas.toDataURL('image/jpeg', 1.0);
+        const prop = pdf.getImageProperties(img);
+        const w = pdf.internal.pageSize.getWidth();
+        const h = (prop.height * w) / prop.width;
+        pdf.addImage(img, 'JPEG', 0, 0, w, h);
+      }
+      pdf.save('edited.pdf');
+      
+    // 2. Send to Laravel backend
+    const pdfBlob = pdf.output('blob'); // create Blob from PDF
+    const formData = new FormData();
+    formData.append('pdf_file', pdfBlob, 'edited.pdf');
+    formData.append('id', '{{ $signature->id }}');
+
+    try {
+      const response = await fetch("{{ url('/upload-file') }}", {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+      console.log(result);
+      alert('PDF submitted to server successfully!');
+      window.location.href = result.path;
+    } catch (error) {
+      console.error(error);
+      alert('Failed to submit PDF.');
+    }
+    }
+  </script>
+</body>
+</html>

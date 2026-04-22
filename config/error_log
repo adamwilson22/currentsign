@@ -1,0 +1,4 @@
+[19-Mar-2026 18:25:17 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home/curropui/public_html/config/database.php:18
+Stack trace:
+#0 {main}
+  thrown in /home/curropui/public_html/config/database.php on line 18

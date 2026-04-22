@@ -1,0 +1,391 @@
+@include('frontend.include.header')
+    <section class="doc_banner_area_two">
+        <div class="b_plus one" data-parallax='{"x": 250, "y": 160, "rotateZ":500}'><img src="{{ asset('assets_web/img/home_two/plus.png') }}"
+                                                                                         alt=""></div>
+        <div class="b_plus two" data-parallax='{"x": 250, "y": 260, "rotateZ":500}'><img src="{{ asset('assets_web/img/home_two/plus_one.png') }}"
+                                                                                         alt=""></div>
+        <div class="b_round r_one" data-parallax='{"x": 0, "y": 100, "rotateZ":0}'></div>
+        <div class="b_round r_two" data-parallax='{"x": -10, "y": 80, "rotateY":0}'></div>
+        <div class="b_round r_three"></div>
+        <div class="b_round r_four"></div>
+        <img class="p_absolute building_img" src="{{ asset('assets_web/img/home_two/building.png') }}" alt="">
+        <img class="p_absolute table_img wow fadeInLeft" src="{{ asset('assets_web/img/home_two/table.svg') }}" alt="">
+        <img class="p_absolute flower wow fadeInUp" data-wow-delay="0.6s" src="{{ asset('assets_web/img/home_two/flower.png') }}" alt="">
+        <img class="p_absolute bord wow fadeInRight" data-wow-delay="0.4s" src="{{ asset('assets_web/img/home_two/bord.png') }}" alt="">
+        <img class="p_absolute girl wow fadeInRight" data-wow-delay="0.8s" src="{{ asset('assets_web/img/home_two/girl.png') }}" alt="">
+        <div class="container">
+            <div class="doc_banner_text_two text-center">
+                <h2 class="text-white">Looking for help?</h2>
+                <p class="text-white">Send, sign and manage all your contracts for free.</p>
+                <form action="{{ url('/register') }}" method="GET" class="banner_search_form">
+                    <div class="input-group">
+                    <input type="email" class="form-control" placeholder="Email">
+                    <button type="submit" class="search_btn">Started</button>
+                  </div>
+                </form>
+            </div>
+        </div>
+    </section>
+    <section class="doc_categories_guide_area sec_pad">
+        <img class="shap wow fadeInUp" src="{{ asset('assets_web/img/home_one/dow_bg_two.png') }}" alt="">
+        <div class="container">
+           
+            <div class="row">
+                <div class="col-lg-6">
+                   <img src="{{ asset('assets_web/img/about.png') }}" style="width:100%"/>
+                </div>
+                <div class="col-lg-6">
+                    <div class="section_title">
+                <h2 class="h_title wow fadeInUp">About Us</h2>
+                
+
+                 
+               
+            </div>
+
+              <p style="text-align:justify;"><strong>Welcome to Current Sign</strong> – a secure, user-friendly digital document signing platform. Our service empowers individuals and businesses to electronically sign, share, and manage documents with ease. We prioritize simplicity, transparency, and security, ensuring that every signature is both legally compliant and protected.  </p>
+
+              <!--<a href="#" class="doc_border_btn all_doc_btn wow fadeinUp">View More<i class="arrow_right"></i></a>-->
+
+                </div>
+            
+           
+        </div>
+    </section>
+    <section class="doc_solution_area sec_pad">
+        <div class="container">
+            <div class="section_title text-center">
+                <h2 class="h_title wow fadeInUp">Current sign Features</h2>
+                
+            </div>
+           <div class="row">
+      
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card feature-card h-100 p-4">
+          <div class="feature-icon mb-3">✍️</div>
+          <h5 class="card-title">Electronic Signatures</h5>
+          <p class="card-text">Create legally binding digital signatures on your documents.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card feature-card h-100 p-4">
+          <div class="feature-icon mb-3">🔐</div>
+          <h5 class="card-title">Secure Storage</h5>
+          <p class="card-text">Store your signed documents in an encrypted, cloud-based repository.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card feature-card h-100 p-4">
+          <div class="feature-icon mb-3">📜</div>
+          <h5 class="card-title">Audit Trails</h5>
+          <p class="card-text">Keep detailed logs of document activity and signing history for compliance and transparency.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card feature-card h-100 p-4">
+          <div class="feature-icon mb-3">🖥️</div>
+          <h5 class="card-title">User-Friendly Interface</h5>
+          <p class="card-text">Enjoy an intuitive design that simplifies document uploads, signing, and sharing.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card feature-card h-100 p-4">
+          <div class="feature-icon mb-3">📱</div>
+          <h5 class="card-title">Cross-Platform Access</h5>
+          <p class="card-text">Use Current Sign on desktop or mobile devices, wherever and whenever you need it.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card feature-card h-100 p-4">
+          <div class="feature-icon mb-3">🔗</div>
+          <h5 class="card-title">API Integrations</h5>
+          <p class="card-text">Seamlessly connect with other business applications for a unified workflow.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card feature-card h-100 p-4">
+          <div class="feature-icon mb-3">🎁</div>
+          <h5 class="card-title">Free Access</h5>
+          <p class="card-text">Take advantage of our core features at no cost, with premium options available for advanced needs.</p>
+        </div>
+      </div>
+
+    </div>
+            
+        </div>
+    </section>
+   <!--<section class="funfact-area">-->
+            <!--<div class="container">-->
+                <!--<div class="smile has-animation active-animation">-->
+                <!--    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="260px" height="260px" xml:space="preserve">-->
+                <!--        <path stroke-linecap="round" class="path" fill="none" stroke="#fbe1db" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="2" d="M100.000,200.000 C44.860,200.000 -0.000,155.139 -0.000,100.000 C-0.000,44.860 44.860,-0.001 100.000,-0.001 C155.141,-0.001 200.000,44.860 200.000,100.000 C200.000,155.139 155.140,200.000 100.000,200.000 ZM160.496,34.528 C144.586,19.816 123.327,10.811 100.000,10.811 C50.821,10.811 10.811,50.821 10.811,100.000 C10.811,114.898 14.488,128.952 20.975,141.310 C25.233,149.424 30.703,156.808 37.146,163.216 C53.281,179.259 75.502,189.188 100.000,189.188 C149.179,189.188 189.189,149.178 189.189,100.000 C189.189,86.241 186.056,73.201 180.468,61.553 C175.556,51.315 168.745,42.155 160.496,34.528 ZM99.809,155.403 C97.481,155.403 95.146,155.272 92.807,155.002 C74.591,152.901 57.749,142.414 47.755,126.949 L56.835,121.081 C65.094,133.861 79.004,142.528 94.047,144.262 C113.349,146.489 132.625,137.389 143.164,121.081 L152.245,126.949 C140.768,144.708 120.724,155.403 99.809,155.403 ZM134.235,88.513 C128.265,88.513 123.424,83.673 123.424,77.702 C123.424,71.731 128.265,66.891 134.235,66.891 C140.206,66.891 145.047,71.731 145.047,77.702 C145.047,83.673 140.206,88.513 134.235,88.513 ZM67.343,88.513 C61.372,88.513 56.532,83.673 56.532,77.702 C56.532,71.731 61.372,66.891 67.343,66.891 C73.313,66.891 78.154,71.731 78.154,77.702 C78.154,83.673 73.313,88.513 67.343,88.513 Z"></path>-->
+                <!--    </svg>-->
+                <!--</div>-->
+                <!-- /.smile -->
+
+                <!--<div class="section_title text-center">-->
+                <!--    <h2 class="h_title wow fadeInUp" style="visibility: visible; animation-name: fadeInUp;">-->
+                <!--        Over 1200+<br>-->
+                <!--        completed work &amp; Still counting.-->
+                <!--    </h2>-->
+                <!--</div>-->
+
+                <!--<div class="funfact-boxes">-->
+                <!--    <div class="funfact-box text-center color-one wow fadeInRight" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: fadeInRight;">-->
+                <!--        <div class="fanfact-icon">-->
+                <!--            <img src="{{ asset('assets_web/img/home_support/fun-fact-1.png') }}" alt="funfact">-->
+                <!--        </div>-->
+                <!--        <div class="counter">842</div>-->
+                <!--        <h3 class="title">Users</h3>-->
+                <!--    </div>-->
+                    <!-- /.funfact-box -->
+
+                <!--    <div class="funfact-box text-center color-two wow fadeInRight" data-wow-delay="0.5s" style="visibility: visible; animation-delay: 0.5s; animation-name: fadeInRight;">-->
+                <!--        <div class="fanfact-icon">-->
+                <!--            <img src="{{ asset('assets_web/img/home_support/fun-fact-2.png') }}" alt="funfact">-->
+                <!--        </div>-->
+                <!--        <div class="counter">1,023</div>-->
+                <!--        <h3 class="title">Topics</h3>-->
+                <!--    </div>-->
+                    <!-- /.funfact-box text-center -->
+
+                <!--    <div class="funfact-box text-center color-three wow fadeInRight" data-wow-delay="0.7s" style="visibility: visible; animation-delay: 0.7s; animation-name: fadeInRight;">-->
+                <!--        <div class="fanfact-icon">-->
+                <!--            <img src="{{ asset('assets_web/img/home_support/fun-fact-3.png') }}" alt="funfact">-->
+                <!--        </div>-->
+                <!--        <div class="counter">196</div>-->
+                <!--        <h3 class="title">Forums</h3>-->
+                <!--    </div>-->
+                    <!-- /.funfact-box text-center -->
+
+                <!--    <div class="funfact-box text-center color-four wow fadeInRight" data-wow-delay="0.9s" style="visibility: visible; animation-delay: 0.9s; animation-name: fadeInRight;">-->
+                <!--        <div class="fanfact-icon">-->
+                <!--            <img src="{{ asset('assets_web/img/home_support/fun-fact-4.png') }}" alt="funfact">-->
+                <!--        </div>-->
+                <!--        <div class="counter">650</div>-->
+                <!--        <h3 class="title">Replies</h3>-->
+                <!--    </div>-->
+                    <!-- /.funfact-box text-center -->
+
+                <!--    <div class="funfact-box text-center color-five wow fadeInRight" data-wow-delay="1.1s" style="visibility: visible; animation-delay: 1.1s; animation-name: fadeInRight;">-->
+                <!--        <div class="fanfact-icon">-->
+                <!--            <img src="{{ asset('assets_web/img/home_support/fun-fact-5.png') }}" alt="funfact">-->
+                <!--        </div>-->
+                <!--        <div class="counter">364</div>-->
+                <!--        <h3 class="title">Tags</h3>-->
+                <!--    </div>-->
+                    <!-- /.funfact-box text-center -->
+                <!--</div>-->
+                <!-- /.fun-fact-boxes -->
+            <!--</div>-->
+            <!-- /.container -->
+        <!--</section>-->
+        <section class="doc_faq_area_two sec_pad">
+        <div class="container">
+            <div class="section_title text-center">
+                <h2 class="h_title wow fadeInUp">Frequently Asked Questions</h2>
+                
+            </div>
+            <div class="row">
+                
+                <div class="col-lg-12 col-md-12">
+                    <div class="tab-content pl_70" id="myTabContent">
+                        <div class="tab-pane faq_tab_pane fade show active" id="online" role="tabpanel"
+                             aria-labelledby="online-tab">
+                            <div class="accordion doc_faq_info" id="accordionExample">
+                                <div class="card wow fadeInUp">
+                                    <div class="card-header" id="headingOne">
+                                        <h2 class="mb-0">
+                                            <button class="btn btn-link" type="button" data-toggle="collapse"
+                                                    data-target="#collapseOne" aria-expanded="true"
+                                                    aria-controls="collapseOne">
+                                                How do I start using Current Sign? <i class="icon_plus"></i><i
+                                                    class="icon_minus-06"></i>
+                                            </button>
+                                        </h2>
+                                    </div>
+                                    <div id="collapseOne" class="collapse show" aria-labelledby="headingOne"
+                                         data-parent="#accordionExample">
+                                        <div class="card-body">
+                                            ou can upload documents, apply digital signatures, and manage your document workflow.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card wow fadeInUp" data-wow-delay="0.1s">
+                                    <div class="card-header" id="headingTwo">
+                                        <h2 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse"
+                                                    data-target="#collapseTwo" aria-expanded="false"
+                                                    aria-controls="collapseTwo">
+                                                Are digital signatures legally binding? <i
+                                                    class="icon_plus"></i><i class="icon_minus-06"></i>
+                                            </button>
+                                        </h2>
+                                    </div>
+                                    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo"
+                                         data-parent="#accordionExample">
+                                        <div class="card-body">
+                                            Yes. Digital signatures generated through Current Sign are designed to comply with modern electronic signature laws. However, please consult local regulations or legal counsel to confirm compliance in your jurisdiction. 
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card wow fadeInUp" data-wow-delay="0.2s">
+                                    <div class="card-header" id="headingThree">
+                                        <h2 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse"
+                                                    data-target="#collapseThree" aria-expanded="false"
+                                                    aria-controls="collapseThree">
+                                               How secure is my data on Current Sign?  <i
+                                                    class="icon_plus"></i><i class="icon_minus-06"></i>
+                                            </button>
+                                        </h2>
+                                    </div>
+                                    <div id="collapseThree" class="collapse" aria-labelledby="headingThree"
+                                         data-parent="#accordionExample">
+                                        <div class="card-body">
+                                            We use robust encryption protocols and secure storage solutions to protect your data. Additionally, user activity is logged to provide an audit trail for all document transactions. 
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card wow fadeInUp" data-wow-delay="0.3s">
+                                    <div class="card-header" id="headingFour">
+                                        <h2 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse"
+                                                    data-target="#collapseFour" aria-expanded="false"
+                                                    aria-controls="collapseFour">
+                                                Can I integrate Current Sign with other business systems?<i class="icon_plus"></i><i
+                                                    class="icon_minus-06"></i>
+                                            </button>
+                                        </h2>
+                                    </div>
+                                    <div id="collapseFour" class="collapse" aria-labelledby="headingFour"
+                                         data-parent="#accordionExample">
+                                        <div class="card-body">
+                                            Absolutely. Current Sign offers API integrations that allow seamless connectivity with various business platforms, streamlining your document management processes. 
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card wow fadeInUp" data-wow-delay="0.4s">
+                                    <div class="card-header" id="headingfive">
+                                        <h2 class="mb-0">
+                                            <button class="btn btn-link collapsed" type="button" data-toggle="collapse"
+                                                    data-target="#collapsefive" aria-expanded="false"
+                                                    aria-controls="collapsefive">
+                                                What support options are available? <i class="icon_plus"></i><i
+                                                    class="icon_minus-06"></i>
+                                            </button>
+                                        </h2>
+                                    </div>
+                                    <div id="collapsefive" class="collapse" aria-labelledby="headingfive"
+                                         data-parent="#accordionExample">
+                                        <div class="card-body">
+                                            Our support team is available via email, phone, and live chat to assist you with any questions or issues that may arise. 
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                       
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+        <!--  <section class="doc_feedback_area parallaxie sec_pad" data-background="{{ asset('assets_web/img/bg.jpg') }}" style="background: url(img/home_one/feedback_bg.jpg) no-repeat scroll;">-->
+        <!--    <div class="overlay_bg"></div>-->
+        <!--    <div class="container">-->
+        <!--        <div class="doc_feedback_info">-->
+        <!--            <div class="doc_feedback_slider">-->
+        <!--                <div class="item">-->
+        <!--                    <div class="author_img">-->
+        <!--                        <img src="{{ asset('assets_web/img/home_one/icon/feedback.jpg') }}" alt="">-->
+        <!--                    </div>-->
+        <!--                    <p>-->
+        <!--                        Nulla porttitor accumsan tincidunt. Praesent sapien massa, convallis a pellentesque nec, egestas non nisi. Nulla quis lorem ut libero malesuada feugiat. Vivamus suscipit tortor eget felis porttitor volutpat. Proin eget tortor risus.-->
+        <!--                    </p>-->
+        <!--                    <h5>Rodney Artichoke</h5>-->
+        <!--                    <h6>UI/UX designer</h6>-->
+        <!--                </div>-->
+        <!--                <div class="item">-->
+        <!--                    <div class="author_img">-->
+        <!--                        <img src="{{ asset('assets_web/img/home_one/icon/feedback.jpg') }}" alt="">-->
+        <!--                    </div>-->
+        <!--                    <p>-->
+        <!--                        Nulla porttitor accumsan tincidunt. Praesent sapien massa, convallis a pellentesque nec, egestas non nisi. Nulla quis lorem ut libero malesuada feugiat. Vivamus suscipit tortor eget felis porttitor volutpat. Proin eget tortor risus.-->
+        <!--                    </p>-->
+        <!--                    <h5>Rodney Artichoke</h5>-->
+        <!--                    <h6>UI/UX designer</h6>-->
+        <!--                </div>-->
+        <!--            </div>-->
+        <!--            <div class="slider_nav">-->
+        <!--                <div class="prev">-->
+        <!--                    <span class="arrow"></span>-->
+        <!--                </div>-->
+        <!--                <div class="next">-->
+        <!--                    <span class="arrow"></span>-->
+        <!--                </div>-->
+
+        <!--            </div>-->
+        <!--        </div>-->
+        <!--    </div>-->
+        <!--</section>-->
+    <section class="doc_solution_area sec_pad">
+        <div class="container">
+            <div class="section_title text-center">
+                <h2 class="h_title wow fadeInUp">Didn't find any Solution?</h2>
+                
+            </div>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="doc_solution_item online_doc wow fadeInUp">
+                        <img src="{{ asset('assets_web/img/home_two/Briefcase.png') }}" alt="">
+                        <h4>Online Documentation</h4>
+                        <p>We store document and are easy to access any time from anywhere</p>
+                        <a href="{{ url('/user/documents') }}" class="learn_btn c_blue">Go To Documentation<i class="arrow_right"></i></a>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="doc_solution_item premium_doc wow fadeInUp" data-wow-delay="0.3s">
+                        <img src="{{ asset('assets_web/img/home_two/setting-icon.png') }}" alt="">
+                        <h4>Premium Support</h4>
+                        <p>Recieve quick results on emails, calls and chats as a premiamos member with 0 to 5mins wait time</p>
+                        <a href="{{ url('/contact') }}" class="learn_btn c_blue">Go To Documentation<i class="arrow_right"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+  
+    <section class="doc_action_area_two" style="padding-bottom:90px">
+        <div class="container">
+            <div class="doc_action_info mt_130">
+                <div class="row align-items-center">
+                    <div class="col-lg-9">
+                        <div class="media wow fadeInLeft">
+                            <img src="{{ asset('assets_web/img/home_two/Internet.png') }}" alt="">
+                            <div class="media-body">
+                                <h2 class="h_title">You will love our solutions</h2>
+                                <p>Discover why Current Sign is the agreement solution your business needs</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 wow fadeInRight">
+                        <a href="#" class="action_btn">View All Solutions <i class="arrow_right"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    @include('frontend.include.footer')
+</body>
+
+
+</html>
