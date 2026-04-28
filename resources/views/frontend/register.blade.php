@@ -1,69 +1,70 @@
 @include('frontend.include.header')
 
-        <section class="signup_area signup_area_height">
-            <div class="row ml-0 mr-0">
-                @include('frontend.include.auth_sidebar', [
-                    'variant' => 'signup',
-                    'authHeading' => 'Create your account',
-                    'authSub' => 'Join Current Sign to sign and manage documents securely.',
-                ])
-                <div class="sign_right signup_right">
-                    <div class="sign_inner signup_inner">
-                        <div class="text-center">
-                            <h3>Create your Account</h3>
-                            <p>Already have an account? <a href="{{ url('/login') }}">Sign in</a></p>
-                            @if (session('success'))
-    <div class="alert alert-success">
-        {{ session('success') }}
-    </div>
-@endif
+<section class="cs-auth-page" aria-labelledby="register-title">
+    <div class="cs-auth-page__noise" aria-hidden="true"></div>
+    <div class="container">
+        <div class="cs-auth-wrap cs-fade-in">
+            <aside class="cs-auth-side">
+                <span class="cs-badge cs-badge--gold">Create your account</span>
+                <h1>Start signing with a premium, secure workflow.</h1>
+                <p>Join Current Sign to send documents, collect signatures, and keep every agreement compliant and protected.</p>
+                <ul>
+                    <li>Free plan available instantly</li>
+                    <li>Bank-grade encrypted storage</li>
+                    <li>Perfect for teams and businesses</li>
+                </ul>
+            </aside>
 
-@if ($errors->any())
-    <div class="alert alert-danger">
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-  <!--<a href="#" class="btn-google"><img src="img/signup/gmail.png" alt=""><span class="btn-text">Sign up with Google</span></a>-->
-                        </div>
-                        <div class="divider">
-                            <span class="or-text">or</span>
-                        </div>
-                        <form action="{{ url('/register-user') }}" method="POST"  class="row login_form">
-                            @csrf
-                            <div class="col-sm-12 form-group">
-                                <div class="small_text">Full name</div>
-                                <input type="text" class="form-control" name="full_name" id="name" placeholder="Muhammad">
-                            </div>
-                            <div class="col-lg-12 form-group">
-                                <div class="small_text">Your email</div>
-                                <input type="email" class="form-control" name="email" id="email" placeholder="info@KbDoc.com">
-                            </div>
-                            <div class="col-lg-12 form-group">
-                                <div class="small_text">Password</div>
-                                <input id="signup-password"  name="password" type="password" class="form-control" placeholder="Password " autocomplete="off">
-                            </div>
-                            <div class="col-lg-12 form-group">
-                                <div class="small_text">Confirm password</div>
-                                <input id="confirm-password" name="confirm_password"  type="password" class="form-control" placeholder="Confirm password required" autocomplete="off">
-                            </div>
-                            <div class="col-lg-12 form-group">
-                                <div class="check_box">
-                                    <input type="checkbox" value="None" id="squared2" >
-                                    <label class="l_text" for="squared2">I accept the <span>politic of confidentiality</span></label>
-                                </div>
-                            </div>
-                            <div class="col-lg-12 text-center">
-                                <button type="submit" class="btn action_btn thm_btn">Create an account</button>
-                            </div>
-                        </form>
+            <div class="cs-auth-card">
+                <h2 id="register-title">Create your account</h2>
+                <p class="cs-auth-card__sub">Already have an account? <a href="{{ url('/login') }}">Sign in</a></p>
+
+                @if (session('success'))
+                    <div class="alert alert-success">
+                        {{ session('success') }}
                     </div>
-                </div>
+                @endif
+
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form action="{{ url('/register-user') }}" method="POST" class="cs-auth-form">
+                    @csrf
+                    <div class="cs-field">
+                        <label for="name">Full name</label>
+                        <input type="text" class="form-control" name="full_name" id="name" placeholder="Muhammad Osama">
+                    </div>
+                    <div class="cs-field">
+                        <label for="email">Your email</label>
+                        <input type="email" class="form-control" name="email" id="email" placeholder="info@company.com">
+                    </div>
+                    <div class="cs-field">
+                        <label for="signup-password">Password</label>
+                        <input id="signup-password" name="password" type="password" class="form-control" placeholder="Password" autocomplete="off">
+                    </div>
+                    <div class="cs-field">
+                        <label for="confirm-password">Confirm password</label>
+                        <input id="confirm-password" name="confirm_password" type="password" class="form-control" placeholder="Confirm password required" autocomplete="off">
+                    </div>
+                    <div class="cs-field">
+                        <label class="cs-auth-check">
+                            <input type="checkbox" value="1" id="squared2">
+                            <span>I accept the policy of confidentiality</span>
+                        </label>
+                    </div>
+                    <button type="submit" class="cs-btn cs-btn--primary cs-auth-submit">Create an account</button>
+                </form>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 
 
 <!-- footer area -->

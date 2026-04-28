@@ -1,53 +1,52 @@
 @include('frontend.include.header')
 
-        <section class="signup_area signup_area_height">
-            <div class="row ml-0 mr-0">
-                @include('frontend.include.auth_sidebar', [
-                    'variant' => 'signin',
-                    'authHeading' => 'Reset password',
-                    'authSub' => 'We will email you a one-time code to sign back in.',
-                ])
-                <div class="sign_right signup_right">
-                    <div class="sign_inner signup_inner">
-                        <div class="text-center">
-                            <h3>Forget Password</h3>
-                           
-                        </div>
-                        <div class="divider">
-                           
-                        </div>
-                        @if (session('success'))
-    <div class="alert alert-success">
-        {{ session('success') }}
-    </div>
-@endif
+<section class="cs-auth-page" aria-labelledby="forget-title">
+    <div class="cs-auth-page__noise" aria-hidden="true"></div>
+    <div class="container">
+        <div class="cs-auth-wrap cs-fade-in">
+            <aside class="cs-auth-side">
+                <span class="cs-badge cs-badge--gold">Reset password</span>
+                <h1>Recover your account quickly and securely.</h1>
+                <p>Enter your registered email and we will send you a one-time verification code to continue.</p>
+                <ul>
+                    <li>Fast OTP-based recovery</li>
+                    <li>Secure verification flow</li>
+                    <li>No data loss or account reset risk</li>
+                </ul>
+            </aside>
 
-@if ($errors->any())
-    <div class="alert alert-danger">
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+            <div class="cs-auth-card">
+                <h2 id="forget-title">Forgot Password</h2>
+                <p class="cs-auth-card__sub">Remembered your credentials? <a href="{{ url('/login') }}">Sign in</a></p>
 
-                        <form action="{{ url('/sendotp') }}" method="POST"  class="row login_form" >
-                            @csrf
-                            <div class="col-lg-12 form-group">
-                                <div class="small_text">Your email</div>
-                                <input type="email" class="form-control" name="email"  id="email" placeholder="info@KbDoc.com">
-                            </div>
-                           
-
-                            <div class="col-lg-12 text-center">
-                                <button type="submit" class="btn action_btn thm_btn">Send Otp</button>
-                            </div>
-                        </form>
+                @if (session('success'))
+                    <div class="alert alert-success">
+                        {{ session('success') }}
                     </div>
-                </div>
+                @endif
+
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form action="{{ url('/sendotp') }}" method="POST" class="cs-auth-form">
+                    @csrf
+                    <div class="cs-field">
+                        <label for="email">Your email</label>
+                        <input type="email" class="form-control" name="email" id="email" placeholder="info@company.com">
+                    </div>
+                    <button type="submit" class="cs-btn cs-btn--primary cs-auth-submit">Send OTP</button>
+                </form>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 @include('frontend.include.footer')
 </body>
 

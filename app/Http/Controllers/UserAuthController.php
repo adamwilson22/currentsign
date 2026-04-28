@@ -16,6 +16,7 @@ use setasign\Fpdi\PdfReader;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class UserAuthController extends Controller {
 
@@ -104,19 +105,35 @@ class UserAuthController extends Controller {
     }
     
     public function dashboard(){
-         $menu = 'projects';
+         $menu = 'dashboard';
          $user_id = auth()->id();
-         $file_count = DB::table('files')->where('user_id', $user_id)->count();
-         $awaiting = DB::table('signatures')->where('user_id', $user_id)->where('status', 'Awaiting')->count();
-         $signed = DB::table('signatures')->where('user_id', $user_id)->where('status', 'Signed')->count();
-         $signeds = DB::table('signatures')->where('user_id', $user_id)->where('status', 'Signed')->orderBy('id', 'desc')->get();
-         $note_count = DB::table('notes')->where('user_id', $user_id)->count();
+         $file_count = Schema::hasTable('files')
+             ? DB::table('files')->where('user_id', $user_id)->count()
+             : 0;
+         $awaiting = Schema::hasTable('signatures')
+             ? DB::table('signatures')->where('user_id', $user_id)->where('status', 'Awaiting')->count()
+             : 0;
+         $signed = Schema::hasTable('signatures')
+             ? DB::table('signatures')->where('user_id', $user_id)->where('status', 'Signed')->count()
+             : 0;
+         $signeds = Schema::hasTable('signatures')
+             ? DB::table('signatures')->where('user_id', $user_id)->where('status', 'Signed')->orderBy('id', 'desc')->get()
+             : collect();
+         $note_count = Schema::hasTable('notes')
+             ? DB::table('notes')->where('user_id', $user_id)->count()
+             : 0;
          return view('frontend.dashboard', compact('menu', 'file_count', 'note_count', 'awaiting', 'signed', 'signeds'));
     }
     
     public function documents(){
-         $menu = 'projects';
+         $menu = 'documents';
          $user_id = auth()->id();
+         if (!Schema::hasTable('files')) {
+             $files = collect();
+             return view('frontend.documents', compact('menu', 'files'))
+                 ->withErrors(['error' => 'Documents table is missing. Please run database migrations.']);
+         }
+
          $files = DB::table('files')->where('user_id', $user_id)->get();
          return view('frontend.documents', compact('menu', 'files'));
     }
@@ -391,12 +408,18 @@ DB::table('signatures')->where('id', $id)->update([
 
     
     public function deletedoc($id){
+        if (!Schema::hasTable('files')) {
+            return back()->withErrors(['error' => 'Documents table is missing. Please run database migrations.']);
+        }
         DB::table('files')->where('id', $id)->delete();
         return back()->with('success', 'successfully!');
     }
     
     public function savedoc(Request $request){
          $menu = 'projects';
+        if (!Schema::hasTable('files')) {
+            return back()->withErrors(['error' => 'Documents table is missing. Please run database migrations.']);
+        }
          
 $file = $request->file('file');
 $fileName = time() . '_' . $file->getClientOriginalName();
@@ -422,19 +445,24 @@ return back()->with('success', 'successfully!');
     }
     
     public function notes(){
-         $menu = 'projects';
+         $menu = 'notes';
          $user_id = auth()->id();
+         if (!Schema::hasTable('notes')) {
+             $notes = collect();
+             return view('frontend.notes', compact('menu', 'notes'))
+                 ->withErrors(['error' => 'Notes table is missing. Please run database migrations.']);
+         }
          $notes = DB::table('notes')->where('user_id', $user_id)->get();
          return view('frontend.notes', compact('menu', 'notes'));
     }
     
     public function addnote(){
-         $menu = 'projects';
+         $menu = 'notes';
          return view('frontend.add-note', compact('menu'));
     }
     
     public function editnote($id){
-         $menu = 'projects';
+         $menu = 'notes';
          $note = DB::table('notes')->where('id', $id)->first();
          return view('frontend.edit-note', compact('menu', 'note'));
     }
@@ -458,8 +486,13 @@ return back()->with('success', 'successfully!');
     }
     
     public function notifications(){
-         $menu = 'projects';
+         $menu = 'notifications';
          $user_id = auth()->id();
+         if (!Schema::hasTable('notifications')) {
+             $notifications = collect();
+             return view('frontend.notification', compact('menu', 'notifications'))
+                 ->withErrors(['error' => 'Notifications table is missing. Please run database migrations.']);
+         }
          $notifications = DB::table('notifications')
     ->where('user_id', $user_id)
     ->orderBy('notification_id', 'desc') // or use 'created_at' if available

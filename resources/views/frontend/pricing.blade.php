@@ -1,72 +1,76 @@
 @include('frontend.include.header')
 
-   <section class="w-100 sec_pad">
-           <div class="container ptb-100">
-                    <div class="pricing-content">
-                        <div class="row">
-                        <div class="col-md-4 col-sm-4 col-xs-12">
-                            <div class="table-list wow fadeInUp" data-wow-delay="0.3s" style="visibility: visible; animation-delay: 0.3s; animation-name: fadeInUp;">
-                                <div class="top-price-inner">
-                                    <h4>Basic</h4>
-                                    <div class="rates">
-                                        <span class="prices"><span class="dolar">$</span>15</span><span class="users">Per Month</span>
-                                    </div>
-                                </div>
-                                <ol>
-                                    <li class="check">10 documents per month</li>
-                                    <li class="check">Core e-signing functionality</li>
-                                    <li class="check">Email notifications and automated reminders</li>
-                                    <li class="check">Signature tracking</li>
-                                </ol>
-                                <div class="">
-                                    <a href="{{ url('/login') }}" class="btn btn-primary">Upgrade now</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 col-sm-4 col-xs-12">
-                            <div class="table-list wow fadeInUp" data-wow-delay="0.5s" style="visibility: visible; animation-delay: 0.5s; animation-name: fadeInUp;">
-                                <div class="top-price-inner">
-                                    <h4>Standard</h4>
-                                    <div class="rates">
-                                        <span class="prices"><span class="dolar">$</span>49</span><span class="users">Per Month</span>
-                                    </div>
-                                </div>
-                                <ol>
-                                    <li class="check">50 documents per month</li>
-                                    <li class="check">All Basic features</li>
-                                    <li class="check">Bulk-send capability (up to 20 recipients per batch)</li>
-                                    <li class="check">Team collaboration (up to 3 users)</li>
-                                </ol>
-                                <div class="">
-                                    <a href="{{ url('/login') }}" class="btn btn-primary">Upgrade now</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 col-sm-4 col-xs-12">
-                            <div class="table-list wow fadeInUp" data-wow-delay="0.7s" style="visibility: visible; animation-delay: 0.7s; animation-name: fadeInUp;">
-                                <div class="top-price-inner">
-                                    <h4>Premium</h4>
-                                    <div class="rates">
-                                        <span class="prices"><span class="dolar">$</span>99</span><span class="users">Per Month</span>
-                                    </div>
-                                </div>
-                                <ol>
-                                   <li class="check">Unlimited documents per month</li>
-                                    <li class="check">All Standard features</li>
-                                    <li class="check">Advanced templates & workflow automation</li>
-                                    <li class="check">API access for custom integrations</li>
-                                    <li class="check">Expanded team accounts (up to 10 users)</li>
-                                    <li class="check">Priority support & dedicated account manager</li>
-                                </ol>
-                                <div class="">
-                                    <a href="{{ url('/login') }}" class="btn btn-primary">Upgrade now</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
+<section class="cs-pricing-page" aria-labelledby="pricing-title">
+    <div class="cs-pricing-page__noise" aria-hidden="true"></div>
+    <div class="container">
+        <div class="cs-pricing-page__header cs-fade-in">
+            <span class="cs-badge cs-badge--gold">Flexible plans</span>
+            <h1 id="pricing-title" class="cs-pricing-page__title">
+                Choose the plan that scales with your <span class="cs-text-gold">business</span>
+            </h1>
+            <p class="cs-pricing-page__sub">
+                Start with a simple plan and move up anytime. All plans include secure cloud storage,
+                legally binding signatures, and trusted delivery.
+            </p>
+        </div>
+
+        <div class="cs-pricing-grid cs-fade-in cs-fade-in--delay">
+            <article class="cs-price-card">
+                <div class="cs-price-card__top">
+                    <h3 class="cs-price-card__name">Basic</h3>
+                    <p class="cs-price-card__price">
+                        <span class="cs-price-card__currency">$</span>15
+                        <span class="cs-price-card__meta">/ month</span>
+                    </p>
                 </div>
-        </section>
+                <ul class="cs-price-card__features">
+                    <li>10 documents per month</li>
+                    <li>Core e-signing functionality</li>
+                    <li>Email notifications and automated reminders</li>
+                    <li>Signature tracking</li>
+                </ul>
+                <a href="{{ url('/login') }}" class="cs-btn cs-btn--ghost-white cs-price-card__cta">Upgrade now</a>
+            </article>
+
+            <article class="cs-price-card cs-price-card--featured">
+                <span class="cs-price-card__tag">Most popular</span>
+                <div class="cs-price-card__top">
+                    <h3 class="cs-price-card__name">Standard</h3>
+                    <p class="cs-price-card__price">
+                        <span class="cs-price-card__currency">$</span>49
+                        <span class="cs-price-card__meta">/ month</span>
+                    </p>
+                </div>
+                <ul class="cs-price-card__features">
+                    <li>50 documents per month</li>
+                    <li>All Basic features</li>
+                    <li>Bulk-send capability (up to 20 recipients per batch)</li>
+                    <li>Team collaboration (up to 3 users)</li>
+                </ul>
+                <a href="{{ url('/login') }}" class="cs-btn cs-btn--primary cs-price-card__cta">Upgrade now</a>
+            </article>
+
+            <article class="cs-price-card cs-price-card--premium">
+                <div class="cs-price-card__top">
+                    <h3 class="cs-price-card__name">Premium</h3>
+                    <p class="cs-price-card__price">
+                        <span class="cs-price-card__currency">$</span>99
+                        <span class="cs-price-card__meta">/ month</span>
+                    </p>
+                </div>
+                <ul class="cs-price-card__features">
+                    <li>Unlimited documents per month</li>
+                    <li>All Standard features</li>
+                    <li>Advanced templates and workflow automation</li>
+                    <li>API access for custom integrations</li>
+                    <li>Expanded team accounts (up to 10 users)</li>
+                    <li>Priority support and dedicated account manager</li>
+                </ul>
+                <a href="{{ url('/login') }}" class="cs-btn cs-btn--primary cs-price-card__cta">Upgrade now</a>
+            </article>
+        </div>
+    </div>
+</section>
 
 
 @include('frontend.include.footer')

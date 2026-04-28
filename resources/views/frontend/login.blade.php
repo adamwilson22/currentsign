@@ -1,60 +1,59 @@
 @include('frontend.include.header')
 
-        <section class="signup_area signup_area_height">
-            <div class="row ml-0 mr-0">
-                @include('frontend.include.auth_sidebar', [
-                    'variant' => 'signin',
-                    'authHeading' => 'Welcome back',
-                    'authSub' => 'Sign in to send, sign, and manage your documents.',
-                ])
-                <div class="sign_right signup_right">
-                    <div class="sign_inner signup_inner">
-                        <div class="text-center">
-                            <h3>Sign in</h3>
-                            <p>Don’t have an account yet? <a href="{{ url('/register') }}">Sign up here</a></p>
-                          <!--  <a href="#" class="btn-google"><img src="img/signup/gmail.png" alt=""><span class="btn-text">Sign in with Gmail</span></a>-->
-                        </div>
-                        <div class="divider">
-                            <span class="or-text">or</span>
-                        </div>
-                        @if (session('success'))
-    <div class="alert alert-success">
-        {{ session('success') }}
-    </div>
-@endif
+<section class="cs-auth-page" aria-labelledby="login-title">
+    <div class="cs-auth-page__noise" aria-hidden="true"></div>
+    <div class="container">
+        <div class="cs-auth-wrap cs-fade-in">
+            <aside class="cs-auth-side">
+                <span class="cs-badge cs-badge--gold">Welcome back</span>
+                <h1>Securely sign and manage documents in minutes.</h1>
+                <p>Access your dashboard to send files, track signers, and keep every agreement encrypted end-to-end.</p>
+                <ul>
+                    <li>Legally binding e-signatures</li>
+                    <li>Audit trail on every action</li>
+                    <li>Fast workflows for teams</li>
+                </ul>
+            </aside>
 
-@if ($errors->any())
-    <div class="alert alert-danger">
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+            <div class="cs-auth-card">
+                <h2 id="login-title">Sign in</h2>
+                <p class="cs-auth-card__sub">Don’t have an account yet? <a href="{{ url('/register') }}">Sign up here</a></p>
 
-                        <form action="{{ url('/login') }}" method="POST"  class="row login_form" >
-                            @csrf
-                            <div class="col-lg-12 form-group">
-                                <div class="small_text">Your email</div>
-                                <input type="email" class="form-control" name="email"  id="email"   placeholder="info@KbDoc.com">
-                            </div>
-                            <div class="col-lg-12 form-group">
-                                <div class="small_text">Password</div>
-                                <div class="confirm_password">
-                                    <input id="login-password" name="password" type="password" class="form-control" placeholder="6+ characters required" autocomplete="current-password">
-                                    <a href="{{ url('/forget') }}" class="forget_btn">Forgotten password?</a>
-                                </div>
-                            </div>
-
-                            <div class="col-lg-12 text-center">
-                                <button type="submit" class="btn action_btn thm_btn">Sign in</button>
-                            </div>
-                        </form>
+                @if (session('success'))
+                    <div class="alert alert-success">
+                        {{ session('success') }}
                     </div>
-                </div>
+                @endif
+
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form action="{{ url('/login') }}" method="POST" class="cs-auth-form">
+                    @csrf
+                    <div class="cs-field">
+                        <label for="email">Your email</label>
+                        <input type="email" class="form-control" name="email" id="email" placeholder="info@company.com">
+                    </div>
+                    <div class="cs-field">
+                        <div class="cs-field__row">
+                            <label for="login-password">Password</label>
+                            <a href="{{ url('/forget') }}" class="cs-auth-link">Forgotten password?</a>
+                        </div>
+                        <input id="login-password" name="password" type="password" class="form-control" placeholder="6+ characters required" autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="cs-btn cs-btn--primary cs-auth-submit">Sign in</button>
+                </form>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 @include('frontend.include.footer')
 </body>
 

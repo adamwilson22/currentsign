@@ -1,32 +1,29 @@
-  <div class="overlay_bg"></div>
- <aside class="doc_left_sidebarlist">
-                            <div class="open_icon" id="left">
-                                <span style="font-size:12px; font-weight:bold">Menu <i class="arrow_carrot-right"></i>
-                                <i class="arrow_carrot-left"></i>
-                                </span>
-                           
-                            </div>
-                            <div class="scroll">
-                                <ul class="list-unstyled nav-sidebar">
-                                    <li class="nav-item">
-                                        <a href="{{ url('/user/dashboard') }}" class="nav-link"> <i class="fa fa-home"></i> Dashboard</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a href="{{ url('/user/documents') }}" class="nav-link"> <i class="fa fa-file"></i> Documents</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a href="{{ url('/user/notes') }}" class="nav-link"> <i class="fa fa-edit"></i> Notes</a>
-                                    </li>
-                                    <li class="nav-item  active">
-                                        <a href="{{ url('/profile') }}" class="nav-link"> <i class="fa fa-user"></i> Profile</a>
-                                    </li>
-                                     <li class="nav-item">
-                                        <a href="{{ url('/user/notifications') }}" class="nav-link"> <i class="fa fa-bell"></i> Notifications</a>
-                                    </li>
-                                   <li class="nav-item">
-                                        <a href="{{ url('/logout') }}" class="nav-link"> <i class="fa fa-sign-out"></i> Log Out</a>
-                                    </li>
-                                </ul>
-                              
-                            </div>
-                        </aside>
+<aside class="cs-app-sidebar">
+    <div class="cs-app-sidebar__head">Workspace</div>
+    <nav class="cs-app-nav" aria-label="User navigation">
+        <a href="{{ url('/user/dashboard') }}" class="cs-app-nav__link {{ ($menu ?? '') === 'dashboard' ? 'is-active' : '' }}">
+            <i class="fa fa-home" aria-hidden="true"></i>
+            Dashboard
+        </a>
+        <a href="{{ url('/user/documents') }}" class="cs-app-nav__link {{ ($menu ?? '') === 'documents' ? 'is-active' : '' }}">
+            <i class="fa fa-file" aria-hidden="true"></i>
+            Documents
+        </a>
+        <a href="{{ url('/user/notes') }}" class="cs-app-nav__link {{ ($menu ?? '') === 'notes' ? 'is-active' : '' }}">
+            <i class="fa fa-edit" aria-hidden="true"></i>
+            Notes
+        </a>
+        <a href="{{ url('/profile') }}" class="cs-app-nav__link {{ ($menu ?? '') === 'profile' ? 'is-active' : '' }}">
+            <i class="fa fa-user" aria-hidden="true"></i>
+            Profile
+        </a>
+        <a href="{{ url('/user/notifications') }}" class="cs-app-nav__link {{ ($menu ?? '') === 'notifications' ? 'is-active' : '' }}">
+            <i class="fa fa-bell" aria-hidden="true"></i>
+            Notifications
+        </a>
+        <a href="{{ url('/logout') }}" class="cs-app-nav__link">
+            <i class="fa fa-sign-out" aria-hidden="true"></i>
+            Log Out
+        </a>
+    </nav>
+</aside>
