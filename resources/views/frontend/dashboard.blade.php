@@ -78,34 +78,34 @@
     </div>
 </section>
 
-<div class="modal" id="upload">
-    <div class="modal-dialog">
-      <div class="modal-content">
+<div class="modal fade cs-theme-modal" id="upload" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content cs-theme-modal__content">
       
         <!-- Modal Header -->
-        <a  href="{{ url('user/documents') }}" class="modal-header">
+        <div class="modal-header cs-theme-modal__header">
           <h4 class="modal-title">Send Document</h4>
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-        </a>
+          <button type="button" class="close cs-theme-modal__close" data-dismiss="modal" aria-label="Close">&times;</button>
+        </div>
         
         <!-- Modal body -->
-        <div class="modal-body">
-          <form action="{{ url('/user/submitsignacture') }}" method="POST" enctype="multipart/form-data">
+        <div class="modal-body cs-theme-modal__body">
+          <form action="{{ url('/user/submitsignacture') }}" method="POST" enctype="multipart/form-data" class="cs-app-form">
               @csrf
-              <div class="form-group">
+              <div class="form-group cs-field">
                   <label>Add Document</label>
-                  <input type="file" name="pdf_path" class="form-control" style="height: 45px;"  required>
+                  <input type="file" name="pdf_path" class="form-control" required>
               </div>
-              <div class="form-group">
+              <div class="form-group cs-field">
                   <label>Email</label>
                   <input type="email" class="form-control" name="email" > 
               </div>
-              <div class="form-group">
+              <div class="form-group cs-field">
                   <label>Page no. to sing</label>
                   <input type="number" class="form-control" value="1" name="page" > 
               </div>
-              <div class="form-group">
-                  <input type="submit" class="btn btn-primary" value="Submit">
+              <div class="form-group mb-0">
+                  <button type="submit" class="cs-btn cs-btn--primary">Submit</button>
               </div>
           </form>
         </div>

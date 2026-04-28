@@ -225,7 +225,7 @@ body {
 
 /* Logo image — blends with dark bg, appears transparent */
 .cs-nav__logo-img {
-  height: 44px;
+  height: 120px;
   width: auto;
   object-fit: contain;
   object-position: left center;
@@ -310,7 +310,7 @@ body {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid rgba(255,255,255,.07);
 }
-.cs-drawer__logo { height: 36px; width: auto; object-fit: contain; }
+.cs-drawer__logo { height: 50px; width: auto; object-fit: contain; }
 .cs-drawer__close {
   background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
   border-radius: 8px; width: 34px; height: 34px; cursor: pointer;
@@ -1984,6 +1984,41 @@ body {
   min-height: 140px;
 }
 
+.cs-theme-modal {
+  background: rgba(5, 10, 20, .62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.cs-theme-modal__content {
+  background: linear-gradient(145deg, rgba(12,21,37,.97), rgba(22,34,56,.96));
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+}
+.cs-theme-modal__header {
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  padding: .95rem 1rem;
+}
+.cs-theme-modal__header .modal-title {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.cs-theme-modal__close {
+  color: rgba(255,255,255,.75);
+  opacity: 1;
+  text-shadow: none;
+}
+.cs-theme-modal__close:hover {
+  color: #fff;
+}
+.cs-theme-modal__body {
+  padding: 1rem;
+}
+.cs-theme-modal .cs-app-form .cs-field label {
+  color: rgba(255,255,255,.8);
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    RESPONSIVE
 ════════════════════════════════════════════════════════════════════════ */
@@ -2053,6 +2088,7 @@ body {
 
 @media (max-width: 768px) {
   :root { --cs-nav-h: 64px; }
+  .cs-nav__logo-img { height: 48px; }
   .cs-hero { padding: calc(var(--cs-nav-h) + 48px) 0 60px; }
   .cs-hero__h1 { font-size: 2.1rem; letter-spacing: -.01em; }
 

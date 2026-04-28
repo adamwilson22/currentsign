@@ -6,7 +6,7 @@
             <div class="cs-footer__brand">
                 <a href="{{ url('/') }}" aria-label="Current Sign home">
                     <img
-                        src="{{ asset('assets_web/img/currentsign-logo.jpg') }}"
+                        src="{{ asset('assets_web/img/CS-2-TBG.png') }}"
                         alt="Current Sign"
                         class="cs-footer__logo-img"
                     >

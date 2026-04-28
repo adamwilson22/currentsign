@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="shortcut icon" href="{{ asset('assets_web/img/currentsign-logo.jpg') }}" type="image/jpeg">
+    <link rel="shortcut icon" href="{{ asset('assets_web/img/CS-2-TBG.png') }}" type="image/png">
     <title>Current Sign — Sign Documents in Seconds</title>
     <meta name="description" content="Legally binding e-signatures for businesses &amp; individuals. Free to start, no printer needed.">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -37,7 +37,7 @@
         <!-- Brand — uses real logo image; dark nav background matches logo bg perfectly -->
         <a class="cs-nav__brand" href="{{ url('/') }}" aria-label="Current Sign home">
             <img
-                src="{{ asset('assets_web/img/currentsign-logo.jpg') }}"
+                src="{{ asset('assets_web/img/CS-2-TBG.png') }}"
                 alt="Current Sign Logo"
                 class="cs-nav__logo-img"
                 width="150"
@@ -79,7 +79,7 @@
     <!-- Mobile drawer -->
     <div class="cs-nav__drawer" id="cs-drawer" aria-hidden="true">
         <div class="cs-drawer__header">
-            <img src="{{ asset('assets_web/img/currentsign-logo.jpg') }}" alt="Current Sign Logo" class="cs-drawer__logo">
+            <img src="{{ asset('assets_web/img/CS-2-TBG.png') }}" alt="Current Sign Logo" class="cs-drawer__logo">
             <button class="cs-drawer__close" id="cs-drawer-close" aria-label="Close menu">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
