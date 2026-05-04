@@ -1,0 +1,55 @@
+name: Staging CI/CD Deploy (SSH Password)
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+
+      - name: Install Composer Dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Deploy via SSH Password
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+
+            echo "📂 Going to project directory..."
+            cd /home/tqxferau/currentsign.the4loop.com
+
+            echo "🔄 Pulling latest staging branch..."
+            git fetch origin
+            git reset --hard origin/staging
+
+            echo "📦 Installing dependencies..."
+            composer install --no-dev --optimize-autoloader
+
+            echo "🧹 Clearing Laravel cache..."
+            php artisan optimize:clear
+
+            echo "🗄️ Running migrations..."
+            php artisan migrate --force
+
+            echo "⚡ Rebuilding cache..."
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            echo "✅ Deployment finished!"
