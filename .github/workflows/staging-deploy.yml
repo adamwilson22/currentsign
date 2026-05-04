@@ -1,4 +1,4 @@
-name: Staging CI/CD Deploy (SSH Password)
+name: Staging CI/CD Deploy
 
 on:
   push:
@@ -18,8 +18,12 @@ jobs:
         with:
           php-version: 8.4
 
-      - name: Install Composer Dependencies
+      - name: Install Dependencies
         run: composer install --no-dev --optimize-autoloader
+
+      # 🔍 SSH connectivity test
+      - name: Check SSH Connectivity
+        run: nc -vz ${{ secrets.SSH_HOST }} 22 || echo "SSH not reachable"
 
       - name: Deploy via SSH Password
         uses: appleboy/ssh-action@v1.0.3
@@ -31,10 +35,10 @@ jobs:
           script: |
             set -e
 
-            echo "📂 Going to project directory..."
+            echo "📂 Entering project directory..."
             cd /home/tqxferau/currentsign.the4loop.com
 
-            echo "🔄 Pulling latest staging branch..."
+            echo "🔄 Updating code..."
             git fetch origin
             git reset --hard origin/staging
 
@@ -47,9 +51,4 @@ jobs:
             echo "🗄️ Running migrations..."
             php artisan migrate --force
 
-            echo "⚡ Rebuilding cache..."
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-
-            echo "✅ Deployment finished!"
+            echo "✅ Deployment completed"
