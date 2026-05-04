@@ -23,7 +23,7 @@ jobs:
 
       # 🔍 SSH connectivity test
       - name: Check SSH Connectivity
-        run: nc -vz ${{ secrets.SSH_HOST }} 22 || echo "SSH not reachable"
+        run: nc -vz ${{ secrets.SSH_HOST }} 21098 || echo "SSH not reachable"
 
       - name: Deploy via SSH Password
         uses: appleboy/ssh-action@v1.0.3
