@@ -264,7 +264,7 @@ public function submitsignacture_old(Request $request){
     
  $user_id = auth()->id();   
  $user = DB::table('users')->where('id', $user_id)->first(); 
- if($user->is_tiral == 'false'){
+ if($user->is_trial == 'false'){
     // return redirect()->back()->with('error', 'Trial expired. Please upgrade your account.');
  }
     
@@ -283,7 +283,7 @@ $data['user_id'] = auth()->id();
 $id = DB::table('signatures')->insertGetId($data);
 $count = DB::table('signatures')->where('user_id', auth()->id())->count();
 if($count >= 5){
-   DB::table('users')->where('id', $user_id)->update(['is_tiral' => 'false']); 
+   DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']); 
 }
 
  $subject = "signature pdf";
@@ -313,7 +313,7 @@ public function submitsignacture(Request $request)
     $user_id = auth()->id();
     $user = DB::table('users')->where('id', $user_id)->first();
 
-    if ($user->is_tiral == 'false') {
+    if ($user->is_trial == 'false') {
         // return redirect()->back()->with('error', 'Trial expired. Please upgrade your account.');
     }
 
@@ -334,7 +334,7 @@ public function submitsignacture(Request $request)
     // ✅ Trial Count
     $count = DB::table('signatures')->where('user_id', $user_id)->count();
     if ($count >= 5) {
-        DB::table('users')->where('id', $user_id)->update(['is_tiral' => 'false']);
+        DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']);
     }
 
     // ✅ Email Send (SMTP)
@@ -387,7 +387,7 @@ DB::table('signatures')->where('id', $id)->update([
      $subject = "signature pdf";
    $emailid = $user->email;
    // Email message
-   $link =  url('/public/'.$filePath . $fileName);
+   $link = asset($filePath . $fileName);
    $message = "Hi,<br><br>Check signatured Doc. <br><a href='".$link."'>View Document</a>";
 
     // Email headers
@@ -401,7 +401,7 @@ DB::table('signatures')->where('id', $id)->update([
     mail($emailid, $subject, $message, $headers);
     return response()->json([
             'message' => 'PDF uploaded successfully!',
-            'path' => url('/public/'.$filePath . $fileName), // Accessible URL
+            'path' => asset($filePath . $fileName),
             'id' => $id
         ]);
 }
