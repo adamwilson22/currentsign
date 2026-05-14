@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Responsive PDF Editor</title>
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  @php
+    $rawPath = $signature->pdf_path ?? $signature->signature ?? '';
+    $rawPath = ltrim((string) $rawPath, '/');
+    if ($rawPath !== '' && str_starts_with($rawPath, 'public/')) {
+        $rawPath = substr($rawPath, strlen('public/'));
+    }
+    $pdfUrl = $rawPath !== '' ? asset($rawPath) : '';
+  @endphp
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
   <style>
     body {
@@ -167,36 +175,51 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const url = "{{ asset('public/' . $signature->signature) }}";
+    const pdfUrl = @json($pdfUrl);
+    const PDF_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
     const container = document.getElementById('pdf-container');
     let pdfDoc;
 
-    pdfjsLib.getDocument(url).promise.then(pdf => {
-      pdfDoc = pdf;
-      for (let i = 1; i <= pdf.numPages; i++) renderPage(i);
-    });
+    if (pdfUrl && typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER;
+    }
 
-    function renderPage(pageNumber) {
-      pdfDoc.getPage(pageNumber).then(page => {
-        const scale = window.innerWidth > 768 ? 1.5 : 1;
-        const viewport = page.getViewport({ scale });
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'page-wrapper';
-
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        page.render({ canvasContext: canvas.getContext('2d'), viewport });
-
-        const drawCanvas = document.createElement('canvas');
-        drawCanvas.className = 'draw-canvas';
-        drawCanvas.width = viewport.width;
-        drawCanvas.height = viewport.height;
-
-        wrapper.append(canvas, drawCanvas);
-        container.append(wrapper);
+    if (!pdfUrl) {
+      container.innerHTML = '<p style="padding:2rem;text-align:center;color:#64748b;">No PDF path configured for this record.</p>';
+    } else {
+      pdfjsLib.getDocument({ url: pdfUrl }).promise.then(async (pdf) => {
+        pdfDoc = pdf;
+        for (let i = 1; i <= pdf.numPages; i++) {
+          await renderPage(i);
+        }
+      }).catch((err) => {
+        console.error(err);
+        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#b91c1c;">Could not load this PDF. Check that the file exists under public/uploads.</p>';
       });
+    }
+
+    async function renderPage(pageNumber) {
+      const page = await pdfDoc.getPage(pageNumber);
+      const scale = window.innerWidth > 768 ? 1.5 : 1;
+      const viewport = page.getViewport({ scale });
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'page-wrapper';
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const drawCanvas = document.createElement('canvas');
+      drawCanvas.className = 'draw-canvas';
+      drawCanvas.width = viewport.width;
+      drawCanvas.height = viewport.height;
+
+      wrapper.append(canvas, drawCanvas);
+      container.append(wrapper);
     }
 
     function addText() {

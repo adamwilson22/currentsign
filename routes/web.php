@@ -77,13 +77,19 @@ Route::get('/termsofuse', function () {
     return view('frontend/termsofuse');
 });
 Route::get('/signature', function (Request $request) {
-    $id = $request->id;
-    $signature = DB::table('signatures')->where('id', $id)->first();
+    $id = $request->query('id');
+    $signature = $id ? DB::table('signatures')->where('id', $id)->first() : null;
+    if (! $signature) {
+        abort(404, 'Document not found.');
+    }
     return view('frontend/pdf-signacture', compact('signature'));
 });
 
 Route::get('/edit-pdf/{id}', function ($id, Request $request) {
     $signature = DB::table('signatures')->where('id', $id)->first();
+    if (! $signature) {
+        abort(404, 'Document not found.');
+    }
     return view('frontend/edit-pdf', compact('signature'));
 });
 

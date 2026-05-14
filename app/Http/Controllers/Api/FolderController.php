@@ -321,7 +321,7 @@ $user = Auth::guard('api')->user();
     
     
 
-    if ($user->is_tiral == 'false') {
+    if ($user->is_trial == 'false') {
         return $this->sendError(
             $result = null,
             $message = 'Trial expired. Please upgrade your account.',
@@ -366,7 +366,7 @@ $user = Auth::guard('api')->user();
     // Check trial count
     $count = DB::table('signatures')->where('user_id', $user_id)->count();
     if ($count >= 5) {
-        DB::table('users')->where('id', $user_id)->update(['is_tiral' => 'false']);
+        DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']);
     }
 
     // Send email
