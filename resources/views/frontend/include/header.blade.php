@@ -89,6 +89,13 @@
             <a href="{{ url('/#cs-about') }}" class="cs-drawer__link">About</a>
             <a href="{{ url('/pricing') }}"   class="cs-drawer__link">Pricing</a>
             <a href="{{ url('/contact') }}"   class="cs-drawer__link">Contact</a>
+            @guest
+                <a href="{{ url('/login') }}" class="cs-drawer__link cs-drawer__link--login">Login</a>
+                <a href="{{ url('/register') }}" class="cs-drawer__link">Register</a>
+            @endguest
+            @auth
+                <a href="{{ url('user/dashboard') }}" class="cs-drawer__link">Dashboard</a>
+            @endauth
         </nav>
         <div class="cs-drawer__cta">
             @guest

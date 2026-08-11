@@ -38,7 +38,13 @@
                                 <p>{{ $file->created_at }}</p>
                             </div>
                             <div class="cs-app-list-item__actions">
-                                <a href="{{ url('public/'.$file->file_path) }}" target="_blank" class="cs-btn cs-btn--ghost-white">View</a>
+                                @php
+                                    $docPath = ltrim((string) ($file->file_path ?? ''), '/');
+                                    if (str_starts_with($docPath, 'public/')) {
+                                        $docPath = substr($docPath, 7);
+                                    }
+                                @endphp
+                                <a href="{{ asset($docPath) }}" target="_blank" class="cs-btn cs-btn--ghost-white">View</a>
                                 <a href="{{ url('user/delete-doc/'.$file->id) }}" class="cs-btn cs-btn--primary" onclick="return confirm('Are you sure you want to delete this document?');">Delete</a>
                             </div>
                         </div>

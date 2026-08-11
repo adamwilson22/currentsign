@@ -108,6 +108,8 @@
     var btn     = document.getElementById('cs-hamburger');
     var drawer  = document.getElementById('cs-drawer');
     var overlay = document.getElementById('cs-overlay');
+    var closeBtn = document.getElementById('cs-drawer-close');
+    if (!btn || !drawer || !overlay) return;
 
     function open() {
         drawer.classList.add('is-open');
@@ -128,7 +130,8 @@
         drawer.classList.contains('is-open') ? close() : open();
     });
     overlay.addEventListener('click', close);
-    document.querySelectorAll('.cs-drawer__link').forEach(function (a) {
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    drawer.querySelectorAll('.cs-drawer__link, .cs-drawer__cta a').forEach(function (a) {
         a.addEventListener('click', close);
     });
 })();
