@@ -114,15 +114,18 @@ class UserAuthController extends Controller {
              ? DB::table('signatures')->where('user_id', $user_id)->where('status', 'Awaiting')->count()
              : 0;
          $signed = Schema::hasTable('signatures')
-             ? DB::table('signatures')->where('user_id', $user_id)->where('status', 'Signed')->count()
+             ? DB::table('signatures')->where('user_id', $user_id)->whereRaw('LOWER(status) = ?', ['signed'])->count()
              : 0;
          $signeds = Schema::hasTable('signatures')
-             ? DB::table('signatures')->where('user_id', $user_id)->where('status', 'Signed')->orderBy('id', 'desc')->get()
+             ? DB::table('signatures')->where('user_id', $user_id)->whereRaw('LOWER(status) = ?', ['signed'])->orderBy('id', 'desc')->get()
+             : collect();
+         $awaitings = Schema::hasTable('signatures')
+             ? DB::table('signatures')->where('user_id', $user_id)->whereRaw('LOWER(status) = ?', ['awaiting'])->orderBy('id', 'desc')->get()
              : collect();
          $note_count = Schema::hasTable('notes')
              ? DB::table('notes')->where('user_id', $user_id)->count()
              : 0;
-         return view('frontend.dashboard', compact('menu', 'file_count', 'note_count', 'awaiting', 'signed', 'signeds'));
+         return view('frontend.dashboard', compact('menu', 'file_count', 'note_count', 'awaiting', 'signed', 'signeds', 'awaitings'));
     }
     
     public function documents(){
@@ -337,24 +340,42 @@ public function submitsignacture(Request $request)
         DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']);
     }
 
-    // ✅ Email Send (SMTP)
+    // ✅ Email Send (SMTP) — don't fail the whole submit if mail is unreachable
     $emailid = $request->email;
     $link = url('/signature?id=' . $id);
+    $mailOk = false;
 
-    Mail::send([], [], function ($message) use ($emailid, $link) {
-        $message->to($emailid)
-            ->subject('Signature PDF')
-            ->from('info@currentsign.com', 'CurrentSign')
-            ->html("
-                Hi,<br><br>
-                Please sign this document.<br><br>
-                <a href='{$link}' style='padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;'>
-                    View Document
-                </a>
-            ");
-    });
+    if (! empty($emailid)) {
+        try {
+            Mail::send([], [], function ($message) use ($emailid, $link) {
+                $message->to($emailid)
+                    ->subject('Signature PDF')
+                    ->from(config('mail.from.address', 'sign@currentsign.com'), config('mail.from.name', 'CurrentSign'))
+                    ->html("
+                        Hi,<br><br>
+                        Please sign this document.<br><br>
+                        <a href='{$link}' style='padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;'>
+                            View Document
+                        </a>
+                    ");
+            });
+            $mailOk = true;
+        } catch (\Throwable $e) {
+            \Log::warning('Signature invite email failed', [
+                'signature_id' => $id,
+                'email' => $emailid,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 
-    return redirect()->back()->with('success', 'Send successfully!');
+    $flash = $mailOk
+        ? 'Document sent successfully to ' . $emailid . '.'
+        : 'Document saved. Email could not be delivered — use the signing link below.';
+
+    return redirect()->back()
+        ->with('success', $flash)
+        ->with('signing_link', $link);
 }
 
 
@@ -379,7 +400,7 @@ $destinationPath = public_path($filePath);
 $file->move($destinationPath, $fileName);
 DB::table('signatures')->where('id', $id)->update([
         'signature' => $filePath . $fileName,
-        'status' => 'signed'
+        'status' => 'Signed'
 ]);
    $signature = DB::table('signatures')->where('id', $id)->first();
    $user = DB::table('users')->where('id', $signature->user_id)->first();

@@ -13,7 +13,14 @@
                     <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
                 @if(session('success'))
-                    <div class="alert alert-success">{{ session('success') }}</div>
+                    <div class="alert alert-success">
+                        {{ session('success') }}
+                        @if(session('signing_link'))
+                            <div class="mt-2">
+                                <a href="{{ session('signing_link') }}" target="_blank" rel="noopener">Open signing link</a>
+                            </div>
+                        @endif
+                    </div>
                 @endif
                 @if($errors->any())
                     <div class="alert alert-danger">
@@ -56,16 +63,52 @@
 
                 <div class="cs-app-card">
                     <div class="cs-app-card__head">
+                        <h3>Awaiting Signature</h3>
+                    </div>
+                    @forelse($awaitings as $pdf)
+                        @php
+                            $awaitPath = ltrim((string) ($pdf->pdf_path ?? ''), '/');
+                            if (str_starts_with($awaitPath, 'public/')) {
+                                $awaitPath = substr($awaitPath, 7);
+                            }
+                        @endphp
+                        <div class="cs-app-list-item">
+                            <div>
+                                <strong>Doc #{{ $pdf->id }}</strong>
+                                <p>{{ $pdf->email ?: 'No recipient email' }} · {{ $pdf->status }}</p>
+                            </div>
+                            <div class="cs-app-list-item__actions">
+                                @if($awaitPath)
+                                    <a href="{{ asset($awaitPath) }}" target="_blank" class="cs-btn cs-btn--ghost-white">View PDF</a>
+                                @endif
+                                <a href="{{ url('/signature?id='.$pdf->id) }}" target="_blank" class="cs-btn cs-btn--primary">Open Sign Link</a>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="cs-app-empty mb-0">No awaiting documents.</p>
+                    @endforelse
+                </div>
+
+                <div class="cs-app-card">
+                    <div class="cs-app-card__head">
                         <h3>Signed PDFs</h3>
                     </div>
                     @forelse($signeds as $pdf)
+                        @php
+                            $viewPath = ltrim((string) ($pdf->signature ?: $pdf->pdf_path), '/');
+                            if (str_starts_with($viewPath, 'public/')) {
+                                $viewPath = substr($viewPath, 7);
+                            }
+                        @endphp
                         <div class="cs-app-list-item">
                             <div>
                                 <strong>PDF{{ $pdf->id }}</strong>
                                 <p>Signed file ready to preview or edit.</p>
                             </div>
                             <div class="cs-app-list-item__actions">
-                                <a href="{{ url('/public/'.$pdf->signature) }}" target="_blank" class="cs-btn cs-btn--ghost-white">View</a>
+                                @if($viewPath)
+                                    <a href="{{ asset($viewPath) }}" target="_blank" class="cs-btn cs-btn--ghost-white">View</a>
+                                @endif
                                 <a href="{{ url('/edit-pdf/'.$pdf->id) }}" class="cs-btn cs-btn--primary">Edit PDF</a>
                             </div>
                         </div>

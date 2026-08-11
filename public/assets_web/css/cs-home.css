@@ -329,6 +329,10 @@ body {
   transition: color var(--cs-transition), background var(--cs-transition), padding-left var(--cs-transition);
 }
 .cs-drawer__link:hover { color: var(--cs-gold-light); background: rgba(197,162,125,.07); padding-left: 1.6rem; }
+.cs-drawer__link--login {
+  color: var(--cs-gold-light);
+  font-weight: 600;
+}
 
 .cs-drawer__cta { padding: 1.25rem; display: flex; flex-direction: column; gap: .65rem; }
 
