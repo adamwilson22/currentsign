@@ -1,4 +1,5 @@
 {
+    "Project": "CurrentSign",
     "private": true,
     "type": "module",
     "scripts": {

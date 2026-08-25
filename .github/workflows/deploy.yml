@@ -1,0 +1,19 @@
+name: Trigger cPanel Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull latest commit into cPanel repo clone
+        run: |
+          curl -s -k -H "Authorization: cpanel ${{ secrets.CPANEL_USER }}:${{ secrets.CPANEL_API_TOKEN }}" \
+            "https://business173.web-hosting.com:2083/execute/VersionControlManager/update?repository_root=/home/curropui/currentsign"
+
+      - name: Deploy HEAD commit (runs .cpanel.yml tasks)
+        run: |
+          curl -s -k -H "Authorization: cpanel ${{ secrets.CPANEL_USER }}:${{ secrets.CPANEL_API_TOKEN }}" \
+            "https://business173.web-hosting.com:2083/execute/VersionControlManager/create_deployment?repository_root=/home/curropui/currentsign"
