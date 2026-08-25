@@ -14,7 +14,7 @@
             </div>
 
             <h1 class="cs-hero__h1">
-                Sign Documents<br>
+                Sign Documentations<br>
                 <span class="cs-hero__serif">in Seconds.</span><br>
                 <span class="cs-hero__highlight">No Printer Needed.</span>
             </h1>
