@@ -87,7 +87,7 @@
                     <div class="cs-sig-field cs-sig-field--pending mt-2">
                         <div class="cs-sig-field__label cs-sig-field__label--pending">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-                            Awaiting: Muhammad Osama
+                            Awaiting: John Smith
                         </div>
                         <div class="cs-sig-field__placeholder">Click to sign here</div>
                     </div>

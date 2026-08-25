@@ -60,11 +60,11 @@
                 <div class="cs-contact-form__grid">
                     <div class="cs-field">
                         <label for="name">Full name</label>
-                        <input type="text" class="form-control" name="name" id="name" placeholder="Muhammad Osama">
+                        <input type="text" class="form-control" name="name" id="name" placeholder="John Smith">
                     </div>
                     <div class="cs-field">
                         <label for="email">Email</label>
-                        <input type="email" class="form-control" name="email" id="email" placeholder="muhammad.osama@company.com">
+                        <input type="email" class="form-control" name="email" id="email" placeholder="john.smith@company.com">
                     </div>
                     <div class="cs-field">
                         <label for="phone">Phone no</label>
