@@ -144,7 +144,7 @@
                   <input type="email" class="form-control" name="email" > 
               </div>
               <div class="form-group cs-field">
-                  <label>Page no. to sing</label>
+                  <label>Page no. to sign</label>
                   <input type="number" class="form-control" value="1" name="page" > 
               </div>
               <div class="form-group mb-0">
