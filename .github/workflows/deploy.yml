@@ -1,0 +1,30 @@
+name: Trigger cPanel Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            export PHP_INI_SCAN_DIR=/home/curropui/.php-cli
+            cd /home/curropui/currentsign
+            git pull origin main
+            export DEPLOYPATH=/home/curropui/public_html/
+            cp -R * $DEPLOYPATH
+            cd $DEPLOYPATH
+            /opt/alt/php84/usr/bin/composer install --no-dev --optimize-autoloader
+            /opt/alt/php84/usr/bin/php artisan migrate --force
+            /opt/alt/php84/usr/bin/php artisan config:cache
+            /opt/alt/php84/usr/bin/php artisan route:cache
+            /opt/alt/php84/usr/bin/php artisan view:cache
