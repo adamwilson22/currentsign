@@ -1,0 +1,10 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/curropui/public_html/
+    - /bin/cp -R * $DEPLOYPATH
+    - cd $DEPLOYPATH && composer install --no-dev --optimize-autoloader
+    - cd $DEPLOYPATH && php artisan migrate --force
+    - cd $DEPLOYPATH && php artisan config:cache
+    - cd $DEPLOYPATH && php artisan route:cache
+    - cd $DEPLOYPATH && php artisan view:cache
