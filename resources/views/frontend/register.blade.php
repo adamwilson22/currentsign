@@ -39,11 +39,11 @@
                     @csrf
                     <div class="cs-field">
                         <label for="name">Full name</label>
-                        <input type="text" class="form-control" name="full_name" id="name" placeholder="Muhammad Osama">
+                        <input type="text" class="form-control" name="full_name" id="name" placeholder="Muhammad Osama" value="{{ old('full_name') }}" autocomplete="name">
                     </div>
                     <div class="cs-field">
                         <label for="email">Your email</label>
-                        <input type="email" class="form-control" name="email" id="email" placeholder="info@company.com">
+                        <input type="email" class="form-control" name="email" id="email" placeholder="muhammad.osama@company.com" value="{{ old('email') }}" autocomplete="email">
                     </div>
                     <div class="cs-field">
                         <label for="signup-password">Password</label>
