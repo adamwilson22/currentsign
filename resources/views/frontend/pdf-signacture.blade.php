@@ -944,30 +944,35 @@
       return;
     }
 
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
-
-    for (let i = 0; i < pages.length; i++) {
-      if (i > 0) pdf.addPage();
-      pages[i].classList.add('is-exporting');
-      const snapshot = await html2canvas(pages[i], { backgroundColor: '#ffffff', scale: 2, logging: false });
-      pages[i].classList.remove('is-exporting');
-      const img = snapshot.toDataURL('image/jpeg', 1.0);
-      const prop = pdf.getImageProperties(img);
-      const w = pdf.internal.pageSize.getWidth();
-      const h = (prop.height * w) / prop.width;
-      pdf.addImage(img, 'JPEG', 0, 0, w, h);
+    const sendBtn = document.querySelector('#toolbar .primary');
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
     }
 
-    setActivePage(currentPage, false);
-    pdf.save('edited.pdf');
-
-    const pdfBlob = pdf.output('blob');
-    const formData = new FormData();
-    formData.append('pdf_file', pdfBlob, 'edited.pdf');
-    formData.append('id', '{{ $signature->id }}');
-
     try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        pages[i].classList.add('is-exporting');
+        const snapshot = await html2canvas(pages[i], { backgroundColor: '#ffffff', scale: 1.5, logging: false });
+        pages[i].classList.remove('is-exporting');
+        const img = snapshot.toDataURL('image/jpeg', 0.92);
+        const prop = pdf.getImageProperties(img);
+        const w = pdf.internal.pageSize.getWidth();
+        const h = (prop.height * w) / prop.width;
+        pdf.addImage(img, 'JPEG', 0, 0, w, h);
+      }
+
+      setActivePage(currentPage, false);
+
+      const pdfBlob = pdf.output('blob');
+      const formData = new FormData();
+      formData.append('pdf_file', pdfBlob, 'signed-document.pdf');
+      formData.append('id', '{{ $signature->id }}');
+
       const response = await fetch("{{ url('/upload-file') }}", {
         method: 'POST',
         headers: {
@@ -980,16 +985,19 @@
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.message || 'Upload failed');
+        throw new Error(result.message || ('Upload failed (' + response.status + ')'));
       }
 
-      alert(result.message || 'PDF submitted successfully!');
-      if (result.path) {
-        window.location.href = result.path;
-      }
+      pdf.save('signed-document.pdf');
+      alert(result.message || 'Signed document sent successfully!');
     } catch (error) {
       console.error(error);
-      alert('Could not submit the PDF to the server. Your download should still be available locally.');
+      alert(error.message || 'Could not send the signed PDF. Please try again or contact the sender.');
+    } finally {
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Download &amp; send';
+      }
     }
   };
 })();

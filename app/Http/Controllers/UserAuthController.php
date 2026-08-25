@@ -111,7 +111,7 @@ class UserAuthController extends Controller {
              ? DB::table('files')->where('user_id', $user_id)->count()
              : 0;
          $awaiting = Schema::hasTable('signatures')
-             ? DB::table('signatures')->where('user_id', $user_id)->where('status', 'Awaiting')->count()
+             ? DB::table('signatures')->where('user_id', $user_id)->whereRaw('LOWER(status) = ?', ['awaiting'])->count()
              : 0;
          $signed = Schema::hasTable('signatures')
              ? DB::table('signatures')->where('user_id', $user_id)->whereRaw('LOWER(status) = ?', ['signed'])->count()
@@ -171,7 +171,8 @@ public function submit(Request $request, $id)
     // Update database
     DB::table('signatures')->where('id', $id)->update([
         'signature' => $filePath . $signatureFilename,
-        'status' => 'signed'
+        'status' => 'Signed',
+        'updated_at' => now(),
     ]);
     
    $signature = DB::table('signatures')->where('id', $id)->first();
@@ -258,8 +259,19 @@ public function submit(Request $request, $id)
     }
 
     $pdf->Output($outputPath, 'F');
+
+    $signedRelativePath = $filePath . $outputFilename;
+    DB::table('signatures')->where('id', $id)->update([
+        'signature' => $signedRelativePath,
+        'pdf_path' => $signedRelativePath,
+        'status' => 'Signed',
+        'updated_at' => now(),
+    ]);
+
+    $this->notifyDocumentOwnerSigned($id, $signedRelativePath);
+
     Session::flash('success', 'PDF signed successfully. Your download should start shortly.');
-    return response()->download($outputPath)->deleteFileAfterSend(true);
+    return response()->download($outputPath);
 }
 
 
@@ -331,6 +343,7 @@ public function submitsignacture(Request $request)
     $data = $request->except('_token');
     $data['pdf_path'] = $filePath . $fileName;
     $data['user_id'] = $user_id;
+    $data['status'] = 'Awaiting';
 
     $id = DB::table('signatures')->insertGetId($data);
 
@@ -387,44 +400,117 @@ public function submitsignacture(Request $request)
 
 
 
-public function uploadfile(Request $request){
-   $id = $request->id;
-   $file = $request->file('pdf_file');
-$fileName = time() . '_' . $file->getClientOriginalName();
-$filePath = 'uploads/folders/';
-$fileType = $file->getClientMimeType(); // Get file MIME type
-
-// Ensure the directory exists
-$destinationPath = public_path($filePath);
-// Move file to the public folder
-$file->move($destinationPath, $fileName);
-DB::table('signatures')->where('id', $id)->update([
-        'signature' => $filePath . $fileName,
-        'status' => 'Signed'
-]);
-   $signature = DB::table('signatures')->where('id', $id)->first();
-   $user = DB::table('users')->where('id', $signature->user_id)->first();
-    
-     $subject = "signature pdf";
-   $emailid = $user->email;
-   // Email message
-   $link = asset($filePath . $fileName);
-   $message = "Hi,<br><br>Check signatured Doc. <br><a href='".$link."'>View Document</a>";
-
-    // Email headers
-    $headers = "From: sign@currentsign.com\r\n";
-    //$headers = "From: info@ryenbilvask.no\r\n";
-    $headers .= "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= "X-Mailer: PHP/" . phpversion();
-
-    // Send the email
-    mail($emailid, $subject, $message, $headers);
-    return response()->json([
-            'message' => 'PDF uploaded successfully!',
-            'path' => asset($filePath . $fileName),
-            'id' => $id
+public function uploadfile(Request $request)
+{
+    try {
+        $request->validate([
+            'id' => 'required|integer',
+            'pdf_file' => 'required|file|max:51200',
         ]);
+    } catch (\Throwable $e) {
+        return response()->json(['message' => 'Invalid upload: ' . $e->getMessage()], 422);
+    }
+
+    $id = (int) $request->input('id');
+    $signature = DB::table('signatures')->where('id', $id)->first();
+    if (! $signature) {
+        return response()->json(['message' => 'Document not found.'], 404);
+    }
+
+    $file = $request->file('pdf_file');
+    if (! $file || ! $file->isValid()) {
+        return response()->json(['message' => 'Signed PDF file is missing or invalid.'], 422);
+    }
+
+    $filePath = 'uploads/folders/';
+    $destinationPath = public_path($filePath);
+    if (! is_dir($destinationPath)) {
+        mkdir($destinationPath, 0755, true);
+    }
+
+    $safeBase = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'signed';
+    $fileName = 'signed_' . $id . '_' . time() . '_' . $safeBase . '.pdf';
+
+    try {
+        $file->move($destinationPath, $fileName);
+    } catch (\Throwable $e) {
+        \Log::error('Signed PDF upload failed', ['signature_id' => $id, 'error' => $e->getMessage()]);
+
+        return response()->json(['message' => 'Could not save signed PDF on server.'], 500);
+    }
+
+    $signedRelativePath = $filePath . $fileName;
+    DB::table('signatures')->where('id', $id)->update([
+        'signature' => $signedRelativePath,
+        'pdf_path' => $signedRelativePath,
+        'status' => 'Signed',
+        'updated_at' => now(),
+    ]);
+
+    $this->notifyDocumentOwnerSigned($id, $signedRelativePath);
+
+    return response()->json([
+        'message' => 'Signed document received. The sender can view it on their dashboard.',
+        'path' => asset($signedRelativePath),
+        'id' => $id,
+        'status' => 'Signed',
+    ]);
+}
+
+private function notifyDocumentOwnerSigned(int $id, string $signedRelativePath): void
+{
+    $signature = DB::table('signatures')->where('id', $id)->first();
+    if (! $signature || ! $signature->user_id) {
+        return;
+    }
+
+    $user = DB::table('users')->where('id', $signature->user_id)->first();
+    if (! $user || empty($user->email)) {
+        return;
+    }
+
+    $link = asset($signedRelativePath);
+    $dashboardLink = url('/user/dashboard');
+
+    if (Schema::hasTable('notifications')) {
+        DB::table('notifications')->insert([
+            'user_id' => $signature->user_id,
+            'notification_text' => 'Document signed',
+            'notification_message' => 'Document #' . $id . ' has been signed and is ready to view.',
+            'is_read' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    try {
+        Mail::send([], [], function ($message) use ($user, $link, $dashboardLink, $id) {
+            $message->to($user->email)
+                ->subject('Your document has been signed')
+                ->from(config('mail.from.address', 'sign@currentsign.com'), config('mail.from.name', 'CurrentSign'))
+                ->html("
+                    Hi,<br><br>
+                    Document #{$id} has been signed.<br><br>
+                    <a href='{$link}'>View signed PDF</a><br>
+                    <a href='{$dashboardLink}'>Open dashboard</a>
+                ");
+        });
+    } catch (\Throwable $e) {
+        \Log::warning('Signed document email failed', [
+            'signature_id' => $id,
+            'error' => $e->getMessage(),
+        ]);
+
+        $headers = "From: sign@currentsign.com\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+        @mail(
+            $user->email,
+            'Your document has been signed',
+            "Hi,<br><br>Document #{$id} has been signed.<br><a href='{$link}'>View signed PDF</a>",
+            $headers
+        );
+    }
 }
 
     

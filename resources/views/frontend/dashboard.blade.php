@@ -102,8 +102,8 @@
                         @endphp
                         <div class="cs-app-list-item">
                             <div>
-                                <strong>PDF{{ $pdf->id }}</strong>
-                                <p>Signed file ready to preview or edit.</p>
+                                <strong>Doc #{{ $pdf->id }}</strong>
+                                <p>{{ $pdf->email ?: 'Recipient' }} · Signed{{ $pdf->updated_at ? ' · ' . \Carbon\Carbon::parse($pdf->updated_at)->diffForHumans() : '' }}</p>
                             </div>
                             <div class="cs-app-list-item__actions">
                                 @if($viewPath)
