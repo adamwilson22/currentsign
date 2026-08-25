@@ -22,7 +22,7 @@ jobs:
             export DEPLOYPATH=/home/curropui/public_html/
             cp -R * $DEPLOYPATH
             cd $DEPLOYPATH
-            composer install --no-dev --optimize-autoloader
+            /opt/alt/php81/usr/bin/composer install --no-dev --optimize-autoloader
             php artisan migrate --force
             php artisan config:cache
             php artisan route:cache
