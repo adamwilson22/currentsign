@@ -473,6 +473,122 @@
       line-height: 1.45;
     }
 
+    .sign-notice-root {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .sign-notice-root[hidden] {
+      display: none !important;
+    }
+
+    .sign-notice-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(2px);
+    }
+
+    .sign-notice-card {
+      position: relative;
+      width: min(100%, 420px);
+      background: var(--surface);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1.5rem 1.5rem 1.25rem;
+      text-align: center;
+      animation: signNoticeIn 0.22s ease-out;
+    }
+
+    @keyframes signNoticeIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .sign-notice-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 1rem;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 1.35rem;
+    }
+
+    .sign-notice-root.is-success .sign-notice-icon {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .sign-notice-root.is-error .sign-notice-icon {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .sign-notice-root.is-info .sign-notice-icon {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .sign-notice-title {
+      margin: 0 0 0.5rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .sign-notice-text {
+      margin: 0 0 1.25rem;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+
+    .sign-notice-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 0.65rem 1.5rem;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      color: #fff;
+      background: var(--accent);
+      min-width: 120px;
+    }
+
+    .sign-notice-btn:hover {
+      filter: brightness(0.95);
+    }
+
+    .sign-toast {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9998;
+      max-width: min(92vw, 420px);
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: var(--ink);
+      color: #fff;
+      box-shadow: var(--shadow);
+      font-size: 0.9rem;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .sign-toast[hidden] {
+      display: none !important;
+    }
+
+    .sign-toast.is-error {
+      background: #991b1b;
+    }
+
     @media (max-width: 768px) {
       #toolbar button,
       #toolbar label.cs-tool {
@@ -542,6 +658,17 @@
   </main>
 </div>
 
+<div id="sign-notice-root" class="sign-notice-root" hidden aria-live="polite">
+  <div class="sign-notice-backdrop" data-notice-close></div>
+  <div class="sign-notice-card" role="alertdialog" aria-modal="true" aria-labelledby="sign-notice-title">
+    <div class="sign-notice-icon" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></div>
+    <h2 id="sign-notice-title" class="sign-notice-title">Document sent</h2>
+    <p class="sign-notice-text"></p>
+    <button type="button" class="sign-notice-btn" data-notice-close>OK</button>
+  </div>
+</div>
+<div id="sign-toast" class="sign-toast" hidden role="status"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -573,6 +700,51 @@
   function hideStatus() {
     statusEl.style.display = 'none';
   }
+
+  const noticeRoot = document.getElementById('sign-notice-root');
+  const noticeTitle = noticeRoot?.querySelector('.sign-notice-title');
+  const noticeText = noticeRoot?.querySelector('.sign-notice-text');
+  const noticeIcon = noticeRoot?.querySelector('.sign-notice-icon');
+  const toastEl = document.getElementById('sign-toast');
+  let toastTimer = null;
+
+  function closeSignNotice() {
+    if (noticeRoot) noticeRoot.hidden = true;
+  }
+
+  function showSignNotice(message, type = 'success', title) {
+    if (!noticeRoot || !noticeText || !noticeTitle || !noticeIcon) return;
+
+    noticeRoot.classList.remove('is-success', 'is-error', 'is-info');
+    noticeRoot.classList.add(type === 'error' ? 'is-error' : (type === 'info' ? 'is-info' : 'is-success'));
+
+    const icons = {
+      success: 'fa-circle-check',
+      error: 'fa-circle-xmark',
+      info: 'fa-circle-info',
+    };
+    noticeIcon.innerHTML = `<i class="fa-solid ${icons[type] || icons.success}"></i>`;
+    noticeTitle.textContent = title || (type === 'error' ? 'Something went wrong' : (type === 'info' ? 'Notice' : 'Document sent'));
+    noticeText.textContent = message;
+    noticeRoot.hidden = false;
+  }
+
+  function showSignToast(message, type = 'info', duration = 3500) {
+    if (!toastEl) return;
+    toastEl.textContent = message;
+    toastEl.classList.toggle('is-error', type === 'error');
+    toastEl.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.hidden = true; }, duration);
+  }
+
+  noticeRoot?.querySelectorAll('[data-notice-close]').forEach((el) => {
+    el.addEventListener('click', closeSignNotice);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && noticeRoot && !noticeRoot.hidden) closeSignNotice();
+  });
 
   function getActivePage() {
     return pageWrappers.get(currentPage) || document.querySelector('.page-wrapper.is-active');
@@ -927,7 +1099,7 @@
 
     function placeSignature() {
       if (!hasDrawn) {
-        alert('Draw your signature first, then click Place on page.');
+        showSignToast('Draw your signature first, then click Place on page.', 'info');
         return;
       }
       placeSignatureFromBox(box);
@@ -979,7 +1151,7 @@
   window.downloadPDF = async function downloadPDF() {
     const pages = Array.from(pageWrappers.values());
     if (!pages.length) {
-      alert('Nothing to export yet. Wait for the PDF to finish loading.');
+      showSignToast('Nothing to export yet. Wait for the PDF to finish loading.', 'info');
       return;
     }
 
@@ -1030,10 +1202,18 @@
       }
 
       pdf.save('signed-document.pdf');
-      alert(result.message || 'Signed document sent successfully!');
+      showSignNotice(
+        result.message || 'Signed document sent successfully. The sender can view it on their dashboard.',
+        'success',
+        'Document sent'
+      );
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Could not send the signed PDF. Please try again or contact the sender.');
+      showSignNotice(
+        error.message || 'Could not send the signed PDF. Please try again or contact the sender.',
+        'error',
+        'Send failed'
+      );
     } finally {
       if (sendBtn) {
         sendBtn.disabled = false;
