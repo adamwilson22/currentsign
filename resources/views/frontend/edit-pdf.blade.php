@@ -85,6 +85,16 @@
     .page-wrapper.is-active { display: block; }
     .page-wrapper.is-exporting { display: block !important; }
 
+    .page-wrapper.is-exporting .overlay-remove,
+    .page-wrapper.is-exporting .signature-box {
+      display: none !important;
+    }
+
+    .page-wrapper.is-exporting .overlay-text {
+      border-color: transparent !important;
+      background: transparent !important;
+    }
+
     canvas {
       display: block;
       width: 100% !important;
@@ -575,15 +585,7 @@
         alert('Draw your signature first, then click Place on page.');
         return;
       }
-      const left = parseFloat(box.style.left) || 50;
-      const top = parseFloat(box.style.top) || 100;
-      const pageNo = Number(box.dataset.page || currentPage);
-      const img = document.createElement('img');
-      img.src = canvas.toDataURL('image/png');
-      img.className = 'overlay-img';
-      img.alt = 'Signature';
-      createOverlay(img, left, top, pageNo);
-      box.remove();
+      placeSignatureFromBox(box);
     });
     box.querySelector('[data-cancel]').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -591,12 +593,46 @@
     });
   };
 
+  function canvasHasDrawing(canvas) {
+    const ctx = canvas.getContext('2d');
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a > 0 && (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function placeSignatureFromBox(box) {
+    const canvas = box.querySelector('canvas');
+    if (!canvas || !canvasHasDrawing(canvas)) {
+      box.remove();
+      return;
+    }
+    const left = parseFloat(box.style.left) || 50;
+    const top = parseFloat(box.style.top) || 100;
+    const pageNo = Number(box.dataset.page || currentPage);
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL('image/png');
+    img.className = 'overlay-img';
+    img.alt = 'Signature';
+    createOverlay(img, left, top, pageNo);
+    box.remove();
+  }
+
+  function finalizeForExport() {
+    Array.from(document.querySelectorAll('.signature-box')).forEach(placeSignatureFromBox);
+  }
+
   window.downloadPDF = async function downloadPDF() {
     const pages = Array.from(pageWrappers.values());
     if (!pages.length) {
       alert('Nothing to export yet.');
       return;
     }
+    finalizeForExport();
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF();
     for (let i = 0; i < pages.length; i++) {
