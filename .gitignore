@@ -20,3 +20,6 @@ yarn-error.log
 
 # Local / hosting backups (often huge zips; GitHub rejects >100MB)
 /_BACKUP/
+
+# Flutter mobile app lives in its own Git repository (currentsign-app)
+/mobile-app/
