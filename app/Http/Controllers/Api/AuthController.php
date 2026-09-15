@@ -66,14 +66,20 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
-            //  if($user->otp_verify != "TRUE"){
-            //              return $this->sendError($result = null, $message = 'Your Account Not Verified.', $notification = null, $error = null, $respose_code = 200);
-            //         }
-           // $user->profile = FALSE;
-            $success['token'] = $user->createToken('MyApp')->accessToken;
-            $success['user_data'] = $user;
-
-            return $this->sendResponse($result = $success, $message = "User login successfully.", $notification = null, $error = null, $respose_code = 200);
+            try {
+                $success['token'] = $user->createToken('MyApp')->accessToken;
+                $success['user_data'] = $user;
+                return $this->sendResponse($result = $success, $message = "User login successfully.", $notification = null, $error = null, $respose_code = 200);
+            } catch (\Throwable $e) {
+                \Log::error('login token failed', ['error' => $e->getMessage()]);
+                return $this->sendError(
+                    null,
+                    'Login succeeded but API token could not be created: ' . $e->getMessage(),
+                    null,
+                    null,
+                    200
+                );
+            }
         } else {
             return $this->sendError($result = null, $message = 'Invalid credentials.', $notification = null, $error = null, $respose_code = 200);
         }
