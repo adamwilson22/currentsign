@@ -251,8 +251,8 @@ class AuthController extends Controller
        
         try {
         if(!$u){
-        // Only persist known columns — production DB often requires `dob`.
-        $user = User::create([
+        $payload = $this->filterUserColumns([
+            'name' => $request->input('full_name'),
             'full_name' => $request->input('full_name'),
             'email' => $request->input('email'),
             // Plain password — User model casts `password` => hashed
@@ -264,34 +264,30 @@ class AuthController extends Controller
             'is_trial' => $request->input('is_trial', 'true'),
             'otp_verify' => 'TRUE',
         ]);
+        $user = User::create($payload);
         $dd= User::find($user->id);
         $rand = "9999";
         rand(1111, 9999);
 
-        $dd->otp = $rand;
-
-        $currentDateTime = date('Y-m-d H:i:s');
-        $futureDateTime = date('Y-m-d H:i:s', strtotime($currentDateTime . ' +15 minutes'));
-
-        $dd->otp_time = $futureDateTime;
-
-        $dd->save();
+        $otpPatch = $this->filterUserColumns([
+            'otp' => $rand,
+            'otp_time' => date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +15 minutes')),
+        ]);
+        if (!empty($otpPatch)) {
+            $dd->fill($otpPatch)->save();
+        }
         
         $success['token'] = $this->issueApiToken($dd);
         $success['user_data'] = $dd;
         }else{
-        $payload = [
+        $payload = $this->filterUserColumns([
             'password' => $request->input('password'),
             'full_name' => $request->input('full_name'),
+            'name' => $request->input('full_name'),
             'dob' => $request->input('dob') ?: '2000-01-01',
-        ];
-        $rand = "9999";
-        rand(1111, 9999);
-
-          $payload['otp'] = $rand;
-          $currentDateTime = date('Y-m-d H:i:s');
-          $futureDateTime = date('Y-m-d H:i:s', strtotime($currentDateTime . ' +15 minutes'));
-          $payload['otp_time'] = $futureDateTime;
+            'otp' => '9999',
+            'otp_time' => date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s') . ' +15 minutes')),
+        ]);
           User::where('email', $input['email'])->update($payload);
           $user =  User::where('email', $input['email'])->first();
           $success['token'] = $this->issueApiToken($user);
@@ -919,6 +915,23 @@ public function getUsers(){
 
             return $user->createToken('MyApp')->accessToken;
         }
+    }
+
+    /**
+     * Keep only columns that exist on the production users table.
+     */
+    protected function filterUserColumns(array $payload): array
+    {
+        $filtered = [];
+        foreach ($payload as $column => $value) {
+            if ($value === null) {
+                continue;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', $column)) {
+                $filtered[$column] = $value;
+            }
+        }
+        return $filtered;
     }
     
   

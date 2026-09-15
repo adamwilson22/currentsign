@@ -54,16 +54,24 @@ class UserAuthController extends Controller {
     
     public function create(array $data) {
         // Plain password — User model casts `password` => hashed (avoid double-hash).
-        // dob default keeps production NOT NULL columns happy for mobile + web signup.
-        return User::create([
+        $payload = [
             'name' => $data['full_name'],
-            'full_name' => $data['full_name'],
             'email' => $data['email'],
             'password' => $data['password'],
-            'dob' => $data['dob'] ?? '2000-01-01',
-            'otp_verify' => 'TRUE',
-            'is_trial' => 'true',
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'full_name')) {
+            $payload['full_name'] = $data['full_name'];
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'dob')) {
+            $payload['dob'] = $data['dob'] ?? '2000-01-01';
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'otp_verify')) {
+            $payload['otp_verify'] = 'TRUE';
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_trial')) {
+            $payload['is_trial'] = 'true';
+        }
+        return User::create($payload);
     }
     
     public function logout() {
