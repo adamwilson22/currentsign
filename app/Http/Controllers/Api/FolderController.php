@@ -30,55 +30,90 @@ class FolderController extends Controller
      $user = Auth::guard('api')->user();
      $userId = $user->id;
 
-     $fileCount = DB::table('files')->where('user_id', $userId)->count();
-     $noteCount = DB::table('notes')->where('user_id', $userId)->count();
-     $awaiting = DB::table('signatures')
-         ->where('user_id', $userId)
-         ->whereRaw('LOWER(status) = ?', ['awaiting'])
-         ->count();
-     $signed = DB::table('signatures')
-         ->where('user_id', $userId)
-         ->whereRaw('LOWER(status) = ?', ['signed'])
-         ->count();
+     try {
+         $fileCount = \Illuminate\Support\Facades\Schema::hasTable('files')
+             ? DB::table('files')->where('user_id', $userId)->count()
+             : 0;
+         $noteCount = \Illuminate\Support\Facades\Schema::hasTable('notes')
+             ? DB::table('notes')->where('user_id', $userId)->count()
+             : 0;
+         $awaiting = 0;
+         $signed = 0;
+         $awaitings = collect();
+         $signeds = collect();
 
-     $mapSignature = function ($row) {
-         $pdf = $this->publicAssetUrl($row->signature ?: $row->pdf_path);
-         $row->pdf_url = $pdf;
-         $row->pdf_path = $this->publicAssetUrl($row->pdf_path);
-         $row->signature = $this->publicAssetUrl($row->signature);
-         $row->sign_url = url('/signature?id=' . $row->id);
-         $row->edit_url = url('/edit-pdf/' . $row->id);
-         return $row;
-     };
+         if (\Illuminate\Support\Facades\Schema::hasTable('signatures')) {
+             $awaiting = DB::table('signatures')
+                 ->where('user_id', $userId)
+                 ->whereRaw('LOWER(status) = ?', ['awaiting'])
+                 ->count();
+             $signed = DB::table('signatures')
+                 ->where('user_id', $userId)
+                 ->whereRaw('LOWER(status) = ?', ['signed'])
+                 ->count();
 
-     $awaitings = DB::table('signatures')
-         ->where('user_id', $userId)
-         ->whereRaw('LOWER(status) = ?', ['awaiting'])
-         ->orderByDesc('id')
-         ->limit(20)
-         ->get()
-         ->map($mapSignature);
+             $mapSignature = function ($row) {
+                 $pdf = $this->publicAssetUrl($row->signature ?: $row->pdf_path);
+                 $row->pdf_url = $pdf;
+                 $row->pdf_path = $this->publicAssetUrl($row->pdf_path);
+                 $row->signature = $this->publicAssetUrl($row->signature);
+                 $row->sign_url = url('/signature?id=' . $row->id);
+                 $row->edit_url = url('/edit-pdf/' . $row->id);
+                 return $row;
+             };
 
-     $signeds = DB::table('signatures')
-         ->where('user_id', $userId)
-         ->whereRaw('LOWER(status) = ?', ['signed'])
-         ->orderByDesc('id')
-         ->limit(20)
-         ->get()
-         ->map($mapSignature);
+             $awaitings = DB::table('signatures')
+                 ->where('user_id', $userId)
+                 ->whereRaw('LOWER(status) = ?', ['awaiting'])
+                 ->orderByDesc('id')
+                 ->limit(20)
+                 ->get()
+                 ->map($mapSignature);
 
-     $data = [
-         'folder_count' => DB::table('folders')->where('user_id', $userId)->count(),
-         'file_count' => $fileCount,
-         'note_count' => $noteCount,
-         'awaiting' => $awaiting,
-         'signed' => $signed,
-         'pdf_count' => $signed,
-         'awaitings' => $awaitings,
-         'signeds' => $signeds,
-     ];
+             $signeds = DB::table('signatures')
+                 ->where('user_id', $userId)
+                 ->whereRaw('LOWER(status) = ?', ['signed'])
+                 ->orderByDesc('id')
+                 ->limit(20)
+                 ->get()
+                 ->map($mapSignature);
+         }
 
-     return $this->sendResponse($result = $data, $message = 'successfully.', $notification = null, $error = null, $respose_code = 200);
+         $folderCount = \Illuminate\Support\Facades\Schema::hasTable('folders')
+             ? DB::table('folders')->where('user_id', $userId)->count()
+             : 0;
+
+         $data = [
+             'folder_count' => $folderCount,
+             'file_count' => $fileCount,
+             'note_count' => $noteCount,
+             'awaiting' => $awaiting,
+             'signed' => $signed,
+             'pdf_count' => $signed,
+             'awaitings' => $awaitings,
+             'signeds' => $signeds,
+         ];
+
+         return $this->sendResponse($result = $data, $message = 'successfully.', $notification = null, $error = null, $respose_code = 200);
+     } catch (\Throwable $e) {
+         \Log::error('getdashboard failed', ['error' => $e->getMessage()]);
+         return $this->sendResponse(
+             [
+                 'folder_count' => 0,
+                 'file_count' => 0,
+                 'note_count' => 0,
+                 'awaiting' => 0,
+                 'signed' => 0,
+                 'pdf_count' => 0,
+                 'awaitings' => [],
+                 'signeds' => [],
+             ],
+             'successfully.',
+             null,
+             null,
+             200
+         );
+     }
     }
     
     public function create_note(Request $request){
