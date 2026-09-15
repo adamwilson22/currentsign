@@ -11,6 +11,9 @@ use App\Http\Controllers\Api\HotelController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\FolderController;
+use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\DeviceController;
 
 use App\Http\Controllers\PayPalController;
 
@@ -44,6 +47,11 @@ Route::prefix('auth')->group(function () {
     Route::post('password-reset', [AuthController::class, 'passwordReset']);
     Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('delete-account', [AuthController::class, 'delete_account']);
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::post('social-login', [AuthController::class, 'socialLogin']);
+    Route::post('social-link', [AuthController::class, 'socialLink']);
+    Route::post('social-unlink', [AuthController::class, 'socialUnlink']);
+    Route::post('linked-social', [AuthController::class, 'linkedSocial']);
     
     Route::post('create-new-password', [AuthController::class, 'createNewPassword']);
     Route::post('change-password', [AuthController::class, 'changePassword']);
@@ -106,11 +114,43 @@ Route::prefix('home')->group(function () {
 });
 
  Route::post('get-dashboard', [FolderController::class, 'getdashboard']);
+ Route::post('dashboard', [FolderController::class, 'getdashboard']);
  Route::post('create-note', [FolderController::class, 'create_note']);
  Route::post('notes', [FolderController::class, 'notes']);
  Route::post('note', [FolderController::class, 'note']);
  Route::post('delete-note', [FolderController::class, 'delete_note']);
  Route::post('update-note', [FolderController::class, 'update_note']);
+
+ Route::prefix('signatures')->group(function () {
+     Route::post('awaiting', [FolderController::class, 'getAwaitingSignatures']);
+ });
+
+ Route::prefix('documents')->group(function () {
+     Route::post('list', [DocumentController::class, 'get_document_list']);
+     Route::post('upload', [DocumentController::class, 'uploadFile']);
+ });
+
+ Route::post('notifications', [FolderController::class, 'getNotifications']);
+ Route::post('notifications/list', [FolderController::class, 'getNotifications']);
+ Route::post('notifications/read', [FolderController::class, 'markNotificationsRead']);
+
+ Route::prefix('billing')->group(function () {
+     Route::get('plans', [BillingController::class, 'plans']);
+     Route::post('plans', [BillingController::class, 'plans']);
+     Route::get('entitlement', [BillingController::class, 'entitlement']);
+     Route::post('entitlement', [BillingController::class, 'entitlement']);
+     Route::post('iap/verify', [BillingController::class, 'verifyIap']);
+     Route::post('iap/restore', [BillingController::class, 'restoreIap']);
+     Route::get('transactions', [BillingController::class, 'transactions']);
+     Route::post('transactions', [BillingController::class, 'transactions']);
+     Route::get('transactions/{id}', [BillingController::class, 'transactionDetail']);
+     Route::post('webhooks/stripe', [BillingController::class, 'stripeWebhook']);
+     Route::post('webhooks/apple', [BillingController::class, 'appleWebhook']);
+     Route::post('webhooks/google', [BillingController::class, 'googleWebhook']);
+ });
+
+ Route::post('device/register', [DeviceController::class, 'register']);
+ Route::post('contact', [CommonController::class, 'contact']);
 
 
 

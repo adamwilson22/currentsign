@@ -36,7 +36,11 @@ class User extends Authenticatable
         'otp_verify',
         'notification',
         'otp_time',
-        'image'
+        'image',
+        'is_trial',
+        'plan',
+        'subscription_status',
+        'docs_per_month',
     ];
 
     /**

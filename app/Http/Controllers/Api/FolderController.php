@@ -26,19 +26,59 @@ class FolderController extends Controller
             $respose_code = 401
         );
     }
-    
-     $folderscount =  DB::table('folders')->count();
-     $filescount =  DB::table('files')->count();
-     $notescount =  DB::table('notes')->count();
-     $pdfscount = 0;
+
+     $user = Auth::guard('api')->user();
+     $userId = $user->id;
+
+     $fileCount = DB::table('files')->where('user_id', $userId)->count();
+     $noteCount = DB::table('notes')->where('user_id', $userId)->count();
+     $awaiting = DB::table('signatures')
+         ->where('user_id', $userId)
+         ->whereRaw('LOWER(status) = ?', ['awaiting'])
+         ->count();
+     $signed = DB::table('signatures')
+         ->where('user_id', $userId)
+         ->whereRaw('LOWER(status) = ?', ['signed'])
+         ->count();
+
+     $mapSignature = function ($row) {
+         $pdf = $this->publicAssetUrl($row->signature ?: $row->pdf_path);
+         $row->pdf_url = $pdf;
+         $row->pdf_path = $this->publicAssetUrl($row->pdf_path);
+         $row->signature = $this->publicAssetUrl($row->signature);
+         $row->sign_url = url('/signature?id=' . $row->id);
+         $row->edit_url = url('/edit-pdf/' . $row->id);
+         return $row;
+     };
+
+     $awaitings = DB::table('signatures')
+         ->where('user_id', $userId)
+         ->whereRaw('LOWER(status) = ?', ['awaiting'])
+         ->orderByDesc('id')
+         ->limit(20)
+         ->get()
+         ->map($mapSignature);
+
+     $signeds = DB::table('signatures')
+         ->where('user_id', $userId)
+         ->whereRaw('LOWER(status) = ?', ['signed'])
+         ->orderByDesc('id')
+         ->limit(20)
+         ->get()
+         ->map($mapSignature);
+
      $data = [
-         'folder_count' => $folderscount,
-         'file_count' => $filescount,
-         'note_count' => $notescount,
-         'pdf_count' => $pdfscount,
-         ];
-         
-     return $this->sendResponse($result = $data, $message = 'successfully.', $notification = null, $error = null, $respose_code = 200);  
+         'folder_count' => DB::table('folders')->where('user_id', $userId)->count(),
+         'file_count' => $fileCount,
+         'note_count' => $noteCount,
+         'awaiting' => $awaiting,
+         'signed' => $signed,
+         'pdf_count' => $signed,
+         'awaitings' => $awaitings,
+         'signeds' => $signeds,
+     ];
+
+     return $this->sendResponse($result = $data, $message = 'successfully.', $notification = null, $error = null, $respose_code = 200);
     }
     
     public function create_note(Request $request){
@@ -52,10 +92,15 @@ class FolderController extends Controller
         );
     }
     $user = Auth::guard('api')->user();
-    $data = $request->all();
-    $data['user_id'] = $user->id;
-    DB::table('notes')->insert($data);
-    return $this->sendResponse($result = null, $message = 'Note Created successfully.', $notification = null, $error = null, $respose_code = 200);  
+    $id = DB::table('notes')->insertGetId([
+        'user_id' => $user->id,
+        'title' => $request->input('title'),
+        'description' => $request->input('description'),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $note = DB::table('notes')->where('id', $id)->first();
+    return $this->sendResponse($result = $note, $message = 'Note Created successfully.', $notification = null, $error = null, $respose_code = 200);  
     }
     
      public function note(Request $request){
@@ -69,7 +114,10 @@ class FolderController extends Controller
         );
     }
     $user = Auth::guard('api')->user();
-    $note = DB::table('notes')->where('id', $request->id)->first();
+    $note = DB::table('notes')->where('id', $request->id)->where('user_id', $user->id)->first();
+    if (!$note) {
+        return $this->sendError(null, 'Note not found.', null, null, 404);
+    }
     return $this->sendResponse($result = $note, $message = 'successfully.', $notification = null, $error = null, $respose_code = 200);  
     }
     
@@ -84,7 +132,10 @@ class FolderController extends Controller
         );
     }
     $user = Auth::guard('api')->user();
-    $note = DB::table('notes')->where('id', $request->id)->delete();
+    $deleted = DB::table('notes')->where('id', $request->id)->where('user_id', $user->id)->delete();
+    if (!$deleted) {
+        return $this->sendError(null, 'Note not found.', null, null, 404);
+    }
     return $this->sendResponse($result = null, $message = 'Note has been deleted successfully.', $notification = null, $error = null, $respose_code = 200);  
     }
     
@@ -114,7 +165,10 @@ class FolderController extends Controller
         );
     }
     $user = Auth::guard('api')->user();
-    $note = DB::table('files')->where('id', $request->id)->delete();
+    $note = DB::table('files')->where('id', $request->id)->where('user_id', $user->id)->delete();
+    if (!$note) {
+        return $this->sendError(null, 'File not found.', null, null, 404);
+    }
     return $this->sendResponse($result = null, $message = 'File has been deleted successfully.', $notification = null, $error = null, $respose_code = 200);  
     }
     
@@ -129,9 +183,18 @@ class FolderController extends Controller
         );
     }
     $user = Auth::guard('api')->user();
-    $data = $request->all();
-    $note = DB::table('notes')->where('id', $data['id'])->update($data);
-    return $this->sendResponse($result = null, $message = 'Note has been updated successfully.', $notification = null, $error = null, $respose_code = 200);  
+    $data = $request->except(['_token', 'user_id']);
+    if (empty($data['id'])) {
+        return $this->sendError(null, 'Note id is required.', null, null, 422);
+    }
+    $note = DB::table('notes')->where('id', $data['id'])->where('user_id', $user->id)->first();
+    if (!$note) {
+        return $this->sendError(null, 'Note not found.', null, null, 404);
+    }
+    unset($data['id']);
+    DB::table('notes')->where('id', $note->id)->where('user_id', $user->id)->update($data);
+    $updated = DB::table('notes')->where('id', $note->id)->first();
+    return $this->sendResponse($result = $updated, $message = 'Note has been updated successfully.', $notification = null, $error = null, $respose_code = 200);  
     }
     
     public function update_folder(Request $request){
@@ -161,7 +224,7 @@ class FolderController extends Controller
         );
     }
     $user = Auth::guard('api')->user();
-    $notes = DB::table('notes')->get();
+    $notes = DB::table('notes')->where('user_id', $user->id)->orderByDesc('id')->get();
     return $this->sendResponse($result = $notes, $message = 'successfully.', $notification = null, $error = null, $respose_code = 200);  
     }
     
@@ -359,7 +422,8 @@ $user = Auth::guard('api')->user();
     $data = $request->except(['_token', 'pdf_path']);
     $data['pdf_path'] = $filePath . $fileName;
     $data['user_id'] = $user_id;
-    $data['page'] = $request->page;
+    $data['page'] = $request->page ?? 1;
+    $data['status'] = 'Awaiting';
     // Insert into database
     $id = DB::table('signatures')->insertGetId($data);
 
@@ -369,11 +433,12 @@ $user = Auth::guard('api')->user();
         DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']);
     }
 
-    // Send email
-    if ($request->has('email')) {
+    $link = url('/signature?id=' . $id);
+    $mailOk = false;
+
+    if ($request->filled('email')) {
         $subject = "Signature PDF";
         $emailid = $request->email;
-        $link = url('/signature?id=' . $id);
         $message = "Hi,<br><br>Please sign this document.<br><a href='" . $link . "'>View Document</a>";
 
         $headers = "From: sign@currentsign.com\r\n";
@@ -381,27 +446,92 @@ $user = Auth::guard('api')->user();
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         $headers .= "X-Mailer: PHP/" . phpversion();
 
-       mail($emailid, $subject, $message, $headers);
-  
+        $mailOk = (bool) @mail($emailid, $subject, $message, $headers);
+    }
 
-    // Return API response
     return $this->sendResponse(
-        $result = ['signature_id' => $id, 'pdf_path' => asset($filePath . $fileName)],
-        $message = 'Signature uploaded and email sent successfully.',
+        $result = [
+            'signature_id' => $id,
+            'pdf_path' => $this->publicAssetUrl($filePath . $fileName),
+            'signing_link' => $link,
+            'email_sent' => $mailOk,
+        ],
+        $message = $mailOk
+            ? 'Signature uploaded and email sent successfully.'
+            : 'Document saved. Use the signing link if email was not delivered.',
         $notification = null,
         $error = null,
         $respose_code = 200
     );
 }
 
+public function getAwaitingSignatures(Request $request)
+{
+    if (!Auth::guard('api')->check()) {
+        return $this->sendError(null, 'Unauthorized.', [], [], 401);
+    }
+
+    $user_id = Auth::guard('api')->id();
+    $rows = DB::table('signatures')
+        ->where('user_id', $user_id)
+        ->whereRaw('LOWER(status) = ?', ['awaiting'])
+        ->orderByDesc('id')
+        ->get()
+        ->map(function ($file) {
+            $file->pdf_path = $this->publicAssetUrl($file->pdf_path);
+            $file->signature = $this->publicAssetUrl($file->signature);
+            $file->pdf_url = $file->pdf_path;
+            $file->sign_url = url('/signature?id=' . $file->id);
+            $file->edit_url = url('/edit-pdf/' . $file->id);
+            return $file;
+        });
+
+    return $this->sendResponse($rows, 'Awaiting signatures fetched successfully.', null, null, 200);
 }
 
+public function getNotifications(Request $request)
+{
+    if (!Auth::guard('api')->check()) {
+        return $this->sendError(null, 'Unauthorized.', [], [], 401);
+    }
 
+    $user = Auth::guard('api')->user();
+    if (!\Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+        return $this->sendResponse([], 'No notifications.', null, null, 200);
+    }
 
+    $rows = DB::table('notifications')
+        ->where('user_id', $user->id)
+        ->orderByDesc('notification_id')
+        ->limit(50)
+        ->get();
+
+    return $this->sendResponse($rows, 'Notifications fetched successfully.', null, null, 200);
+}
+
+public function markNotificationsRead(Request $request)
+{
+    if (!Auth::guard('api')->check()) {
+        return $this->sendError(null, 'Unauthorized.', [], [], 401);
+    }
+
+    if (!\Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+        return $this->sendResponse(null, 'OK.');
+    }
+
+    $userId = Auth::guard('api')->id();
+    $id = $request->input('id') ?? $request->input('notification_id');
+    $q = DB::table('notifications')->where('user_id', $userId);
+    if ($id) {
+        $q->where('notification_id', $id);
+    }
+    $q->update(['is_read' => true, 'updated_at' => now()]);
+
+    return $this->sendResponse(null, 'Notifications marked read.');
+}
 
 public function getSignedSignatures(Request $request)
 {
-    // 1️⃣ Authentication check
     if (!Auth::guard('api')->check()) {
         return $this->sendError(
             $result = null,
@@ -414,47 +544,27 @@ public function getSignedSignatures(Request $request)
 
     $user_id = Auth::guard('api')->id();
 
-    // 2️⃣ Fetch signed signatures
     $signeds = DB::table('signatures')
         ->where('user_id', $user_id)
-        ->where('status', 'Signed')
+        ->whereRaw('LOWER(status) = ?', ['signed'])
         ->orderBy('id', 'desc')
-        ->get();
+        ->get()
+        ->map(function ($file) {
+            $file->pdf_path = $this->publicAssetUrl($file->pdf_path);
+            $file->signature = $this->publicAssetUrl($file->signature);
+            $file->pdf_url = $file->signature ?: $file->pdf_path;
+            $file->sign_url = url('/signature?id=' . $file->id);
+            $file->edit_url = url('/edit-pdf/' . $file->id);
+            return $file;
+        });
 
-
-  // 3️⃣ Convert pdf_path to full URL
-    $signeds = $signeds->map(function ($file) {
-        $file->signature = asset('/public/'.$file->signature);
-        return $file;
-    });
- 
-
-
-    // 3️⃣ Check if any signed signatures exist
-    if ($signeds->isEmpty()) {
-        return $this->sendResponse(
-            $result = [],
-            $message = 'No signed signatures found.',
-            $notification = null,
-            $error = null,
-            $respose_code = 200
-        );
-    }
-
-    // 4️⃣ Return API response
     return $this->sendResponse(
         $result = $signeds,
-        $message = 'Signed signatures fetched successfully.',
+        $message = $signeds->isEmpty() ? 'No signed signatures found.' : 'Signed signatures fetched successfully.',
         $notification = null,
         $error = null,
         $respose_code = 200
     );
 }
-
-
-
-
-
-
     
 }

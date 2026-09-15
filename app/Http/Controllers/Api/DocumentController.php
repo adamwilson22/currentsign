@@ -2,111 +2,80 @@
 namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Validator;
-use Hash;
 use DB;
 use Illuminate\Support\Facades\File;
-    
-    
+
+
 class DocumentController extends Controller
 {
-   
+
  public function uploadFile(Request $request)
    {
-    // Check if user is authenticated
     if (!Auth::guard('api')->check()) {
-        return $this->sendError(
-            null,
-            'Unauthorized.',
-            [],
-            [],
-            401
-        );
+        return $this->sendError(null, 'Unauthorized.', [], [], 401);
     }
 
-    // Validate request
     $request->validate([
-        // 'folder_id' => 'required|exists:folders,id',
-        'file' => 'required|file|max:10240', // Max file size 10MB
+        'file' => 'required|file|max:10240',
+        'name' => 'nullable|string|max:255',
     ]);
 
-  $user = Auth::guard('api')->user();
-// $folder = DB::table('folders')->where('id', $request->folder_id)->where('user_id', $user->id)->first();
+    $user = Auth::guard('api')->user();
 
-// if (!$folder) {
-//     return $this->sendError(null, 'Folder not found.', [], [], 404);
-// }
+    $file = $request->file('file');
+    $original = $file->getClientOriginalName();
+    $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
+    $filePath = 'uploads/document/';
+    $fileType = $file->getClientMimeType();
 
-// Store file
-$file = $request->file('file');
-$fileName = time() . '_' . $file->getClientOriginalName();
-$filePath = 'uploads/document/';
-$fileType = $file->getClientMimeType(); // Get file MIME type
+    $destinationPath = public_path($filePath);
+    if (!File::exists($destinationPath)) {
+        File::makeDirectory($destinationPath, 0755, true, true);
+    }
 
-// Ensure the directory exists
-$destinationPath = public_path($filePath);
-if (!File::exists($destinationPath)) {
-    File::makeDirectory($destinationPath, 0755, true, true);
-}
+    $file->move($destinationPath, $fileName);
 
-// Move file to the public folder
-$file->move($destinationPath, $fileName);
+    $relative = $filePath . $fileName;
+    $displayName = $request->input('name') ?: $original;
 
-// Save file info to DB
-DB::table('files')->insert([
-    'user_id' => $user->id,
-    'folder_id' => 2,
-    'file_name' => $fileName,
-    'file_path' => $filePath . $fileName, // Path in public folder
-    'file_type' => $fileType, // Store file type
-]);
+    $id = DB::table('files')->insertGetId([
+        'user_id' => $user->id,
+        'folder_id' => $request->input('folder_id'),
+        'file_name' => $displayName,
+        'file_path' => $relative,
+        'file_type' => $fileType,
+    ]);
 
-return $this->sendResponse($result = [
-    'file_name' => $fileName,
-    'file_url' => asset('/public/'.$filePath.$fileName), // URL accessible from browser
-], $message = 'File uploaded successfully.', $notification = null, $error = null, $response_code = 200);
-
+    return $this->sendResponse([
+        'id' => $id,
+        'file_name' => $displayName,
+        'file_path' => $relative,
+        'file_url' => $this->publicAssetUrl($relative),
+    ], 'File uploaded successfully.', null, null, 200);
    }
 
 
    public function get_document_list(Request $request) {
     if (!Auth::guard('api')->check()) {
-        return $this->sendError(
-            $result = null,
-            $message = 'Unauthorized.',
-            $notification = [],
-            $error = [],
-            $respose_code = 401
-        );
+        return $this->sendError(null, 'Unauthorized.', [], [], 401);
     }
 
     $user = Auth::guard('api')->user();
+    $files = DB::table('files')->where('user_id', $user->id)->orderByDesc('id')->get();
 
-    // Fetch user files
-    $files = DB::table('files')->where('user_id', $user->id)->get();
-
-    // Update file paths to be accessible URLs
-    foreach ($files as &$file) {
-        $file->file_path = asset('public/'.$file->file_path); 
+    foreach ($files as $file) {
+        $file->file_url = $this->publicAssetUrl($file->file_path);
+        $file->file_path = $file->file_url;
     }
-    
-
 
     return $this->sendResponse(
-        $result = $files, 
-        $message = 'Successfully fetched documents.', 
-        $notification = null, 
-        $error = null, 
-        $respose_code = 200
+        $files,
+        'Successfully fetched documents.',
+        null,
+        null,
+        200
     );
 }
-
-
-
-
-
-
 
 }

@@ -205,8 +205,42 @@ public function ask_support1(Request $request)
     }
 }
 
-        
-    
-    
+    /** Guest contact form for mobile (parity with web /contact-submit). */
+    public function contact(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'message' => 'required|string',
+            'phone' => 'nullable|string|max:50',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError(null, $validator->errors()->first(), null, null, 422);
+        }
+
+        $payload = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'message' => $request->message,
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('contact', 'phone') || \Illuminate\Support\Facades\Schema::hasColumn('contact', 'phone_no')) {
+            // optional
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('contact')) {
+                DB::table('contact')->insert($payload);
+            } elseif (\Illuminate\Support\Facades\Schema::hasTable('contacts')) {
+                DB::table('contacts')->insert($payload);
+            } else {
+                \Log::info('Contact form (no table)', $payload);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Contact insert failed', ['error' => $e->getMessage()]);
+            // Still accept the request so the app UX succeeds; ops can inspect logs.
+        }
+
+        return $this->sendResponse(null, 'Contact submitted successfully.');
+    }
 
 }

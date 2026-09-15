@@ -116,22 +116,23 @@ class AuthController extends Controller
             $user->following_count = $followingCount;
             
             /*--------------------------------signatures----------------------------------------------*/
-                 $AwaitingCount = DB::table('signatures')
-            ->where('user_id', $user->id)
-            ->where('status', 'Awaiting')
-            ->count();
-             
+            $AwaitingCount = DB::table('signatures')
+                ->where('user_id', $user->id)
+                ->whereRaw('LOWER(status) = ?', ['awaiting'])
+                ->count();
+
             $user->AwaitingCount = $AwaitingCount;
-             
+
             $signedCount = DB::table('signatures')
-            ->where('user_id', $user->id)
-            ->where('status', 'signed')
-            ->count();
-            
+                ->where('user_id', $user->id)
+                ->whereRaw('LOWER(status) = ?', ['signed'])
+                ->count();
+
             $user->signedCount = $signedCount;
-            
-            
-             
+            $user->is_trial = $user->is_trial ?? 'true';
+            $user->plan = $user->plan ?? ($user->is_trial === 'false' ? 'expired_trial' : 'trial');
+            $user->subscription_status = $user->subscription_status ?? ($user->is_trial === 'false' ? 'expired' : 'trialing');
+
               $success['token'] = '';
               $success['user_data'] = $user; 
            
@@ -163,17 +164,17 @@ class AuthController extends Controller
 
     public function signup(Request $request)
     {
+        // Align with website registration: full_name, email, password (min 6). dob optional.
         $validator = Validator::make(
             $request->all(),
             [
                 'email' => 'required|email',
-                'dob' => 'required',
-                'full_name' => 'required',
-                'password' => 'required|min:6|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+                'dob' => 'nullable|string',
+                'full_name' => 'required|string|max:255',
+                'password' => 'required|min:6',
             ],
             [
-                'password.regex' => 'The password must contain at least one uppercase letter, one lowercase letter, and one number.',
-                'password.min' => 'The password must be at least 8 characters long.',
+                'password.min' => 'The password must be at least 6 characters long.',
             ]
         );
     
@@ -244,6 +245,9 @@ class AuthController extends Controller
        
         if(!$u){
        $input['password'] = bcrypt($input['password']);
+        if (!isset($input['is_trial'])) {
+            $input['is_trial'] = 'true';
+        }
         $user = User::create($input);
         $dd= User::find($user->id);
         $rand = "9999";
@@ -258,7 +262,7 @@ class AuthController extends Controller
 
         $dd->save();
         
-        $success['token'] ='' ;//$user->createToken('MyApp')->accessToken;
+        $success['token'] = $dd->createToken('MyApp')->accessToken;
         $success['user_data'] = $dd;
         }else{
         $input['password'] = bcrypt($input['password']);
@@ -282,6 +286,143 @@ class AuthController extends Controller
         return $this->sendResponse($result = $success, $message = "Signup Successfully", $notification = null, $error = null, $respose_code = 200);
     }
 
+    public function logout(Request $request)
+    {
+        if (!Auth::guard('api')->check()) {
+            return $this->sendError(null, 'Unauthorized.', null, null, 401);
+        }
+
+        $user = Auth::guard('api')->user();
+        $token = $user->token();
+        if ($token) {
+            $token->revoke();
+        }
+
+        return $this->sendResponse(null, 'Logged out successfully.', null, null, 200);
+    }
+
+    /**
+     * Social login (Apple / Google). Verifies identity client-side token payload lightly;
+     * production should verify JWT with Apple/Google JWKS.
+     */
+    public function socialLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'provider' => 'required|in:apple,google,facebook',
+            'id_token' => 'required|string',
+            'email' => 'nullable|email',
+            'full_name' => 'nullable|string|max:255',
+            'nonce' => 'nullable|string',
+            'provider_user_id' => 'nullable|string',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError(null, $validator->errors()->first(), null, null, 422);
+        }
+
+        $provider = $request->provider;
+        $providerUserId = $request->provider_user_id;
+        $email = $request->email;
+
+        // Decode JWT payload (no signature verify here — add JWKS verify in production).
+        $parts = explode('.', $request->id_token);
+        if (count($parts) >= 2) {
+            $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+            if (is_array($payload)) {
+                $providerUserId = $providerUserId ?: ($payload['sub'] ?? null);
+                $email = $email ?: ($payload['email'] ?? null);
+            }
+        }
+
+        if (! $providerUserId) {
+            return $this->sendError(null, 'Unable to resolve provider user id.', null, null, 422);
+        }
+
+        $user = null;
+        if (\Illuminate\Support\Facades\Schema::hasTable('social_accounts')) {
+            $link = DB::table('social_accounts')
+                ->where('provider', $provider)
+                ->where('provider_user_id', $providerUserId)
+                ->first();
+            if ($link) {
+                $user = User::find($link->user_id);
+            }
+        }
+
+        if (! $user && $email) {
+            $user = User::where('email', $email)->first();
+        }
+
+        if (! $user) {
+            $user = User::create([
+                'full_name' => $request->full_name ?: ($email ? explode('@', $email)[0] : 'CurrentSign User'),
+                'email' => $email ?: ($provider . '_' . $providerUserId . '@privaterelay.currentsign.local'),
+                'password' => Hash::make(bin2hex(random_bytes(16))),
+                'is_trial' => 'true',
+                'otp_verify' => 'TRUE',
+            ]);
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('social_accounts')) {
+            DB::table('social_accounts')->updateOrInsert(
+                ['provider' => $provider, 'provider_user_id' => $providerUserId],
+                [
+                    'user_id' => $user->id,
+                    'email' => $email,
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
+
+        $success = [
+            'token' => $user->createToken('MyApp')->accessToken,
+            'user_data' => $user,
+        ];
+
+        return $this->sendResponse($success, 'Social login successful.');
+    }
+
+    public function socialLink(Request $request)
+    {
+        if (! Auth::guard('api')->check()) {
+            return $this->sendError(null, 'Unauthorized.', null, null, 401);
+        }
+        return $this->socialLogin($request);
+    }
+
+    public function socialUnlink(Request $request)
+    {
+        if (! Auth::guard('api')->check()) {
+            return $this->sendError(null, 'Unauthorized.', null, null, 401);
+        }
+        $provider = $request->input('provider');
+        if (! $provider) {
+            return $this->sendError(null, 'provider is required.', null, null, 422);
+        }
+        if (\Illuminate\Support\Facades\Schema::hasTable('social_accounts')) {
+            DB::table('social_accounts')
+                ->where('user_id', Auth::guard('api')->id())
+                ->where('provider', $provider)
+                ->delete();
+        }
+        return $this->sendResponse(null, 'Social account unlinked.');
+    }
+
+    public function linkedSocial(Request $request)
+    {
+        if (! Auth::guard('api')->check()) {
+            return $this->sendError(null, 'Unauthorized.', null, null, 401);
+        }
+        $rows = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('social_accounts')) {
+            $rows = DB::table('social_accounts')
+                ->where('user_id', Auth::guard('api')->id())
+                ->pluck('provider')
+                ->values()
+                ->all();
+        }
+        return $this->sendResponse(['providers' => $rows], 'Linked providers.');
+    }
   
     public function createNewPassword(Request $request)
     {

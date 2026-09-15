@@ -33,7 +33,7 @@ class Controller extends BaseController
      */
     public function sendError($result = [], $message = "" , $notification = [], $error = [] , $respose_code = 200)
     {
-     	$response = [
+    	$response = [
             'success' => false,
             'data'    => $result,
             'message' => $message,
@@ -44,6 +44,37 @@ class Controller extends BaseController
         ];
 
         return response()->json($response, $respose_code);
+    }
+
+    /**
+     * Strip leading public/ and build a browser-safe absolute URL for uploaded files.
+     */
+    protected function publicAssetUrl(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
+        if (str_starts_with($normalized, 'public/')) {
+            $normalized = substr($normalized, strlen('public/'));
+        }
+
+        return asset($normalized);
+    }
+
+    protected function normalizePublicPath(?string $path): string
+    {
+        if ($path === null || $path === '') {
+            return '';
+        }
+
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
+        if (str_starts_with($normalized, 'public/')) {
+            $normalized = substr($normalized, strlen('public/'));
+        }
+
+        return $normalized;
     }
     
 }
