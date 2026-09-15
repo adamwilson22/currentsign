@@ -67,7 +67,7 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
             try {
-                $success['token'] = $user->createToken('MyApp')->accessToken;
+                $success['token'] = $this->issueApiToken($user);
                 $success['user_data'] = $user;
                 return $this->sendResponse($result = $success, $message = "User login successfully.", $notification = null, $error = null, $respose_code = 200);
             } catch (\Throwable $e) {
@@ -277,7 +277,7 @@ class AuthController extends Controller
 
         $dd->save();
         
-        $success['token'] = $dd->createToken('MyApp')->accessToken;
+        $success['token'] = $this->issueApiToken($dd);
         $success['user_data'] = $dd;
         }else{
         $payload = [
@@ -294,7 +294,7 @@ class AuthController extends Controller
           $payload['otp_time'] = $futureDateTime;
           User::where('email', $input['email'])->update($payload);
           $user =  User::where('email', $input['email'])->first();
-          $success['token'] = $user->createToken('MyApp')->accessToken;
+          $success['token'] = $this->issueApiToken($user);
           $success['user_data'] = $user;
             
         }
@@ -404,7 +404,7 @@ class AuthController extends Controller
         }
 
         $success = [
-            'token' => $user->createToken('MyApp')->accessToken,
+            'token' => $this->issueApiToken($user),
             'user_data' => $user,
         ];
 
@@ -678,7 +678,7 @@ class AuthController extends Controller
         $user->save();
         
         
-          $success['token'] = $user->createToken('MyApp')->accessToken;
+          $success['token'] = $this->issueApiToken($user);
           $success['user_data'] = $user;
           
         return $this->sendResponse($result = $success, $message = 'Otp verified successfully.', $notification = null, $error = null, $respose_code = 200);
@@ -889,6 +889,37 @@ public function getUsers(){
             $respose_code = 200
         );
 }
+
+    /**
+     * Issue a Passport personal-access token, repairing missing keys/client once if needed.
+     */
+    protected function issueApiToken($user): string
+    {
+        try {
+            return $user->createToken('MyApp')->accessToken;
+        } catch (\Throwable $e) {
+            \Log::warning('createToken failed, repairing Passport', ['error' => $e->getMessage()]);
+
+            $private = storage_path('oauth-private.key');
+            $public = storage_path('oauth-public.key');
+            if (!is_readable($private) || !is_readable($public)) {
+                \Artisan::call('passport:keys', ['--force' => true]);
+            }
+
+            try {
+                $pac = \Laravel\Passport\Passport::personalAccessClient();
+                if (!$pac->exists()) {
+                    app(\Laravel\Passport\ClientRepository::class)
+                        ->createPersonalAccessClient(null, 'CurrentSign Personal Access Client', 'http://localhost');
+                }
+            } catch (\Throwable $ignored) {
+                app(\Laravel\Passport\ClientRepository::class)
+                    ->createPersonalAccessClient(null, 'CurrentSign Personal Access Client', 'http://localhost');
+            }
+
+            return $user->createToken('MyApp')->accessToken;
+        }
+    }
     
   
     
