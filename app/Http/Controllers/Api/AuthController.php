@@ -100,49 +100,53 @@ class AuthController extends Controller
         
         $user = Auth::guard('api')->user();
         
-        //print_r($user);
-        
         if($user){
-            if($user->image){
-                 $user->image = url("/") . "/" . "storage/app/public/" .$user->image;
+            try {
+                if($user->image){
+                     $user->image = url("/") . "/" . "storage/app/public/" .$user->image;
+                }
+
+                $user->followers_count = 0;
+                $user->following_count = 0;
+                if (\Illuminate\Support\Facades\Schema::hasTable('follows')) {
+                    $user->followers_count = DB::table('follows')
+                        ->where('following_id', $user->id)
+                        ->where('status', 'accepted')
+                        ->count();
+                    $user->following_count = DB::table('follows')
+                        ->where('follower_id', $user->id)
+                        ->where('status', 'accepted')
+                        ->count();
+                }
+
+                $user->AwaitingCount = 0;
+                $user->signedCount = 0;
+                if (\Illuminate\Support\Facades\Schema::hasTable('signatures')) {
+                    $user->AwaitingCount = DB::table('signatures')
+                        ->where('user_id', $user->id)
+                        ->whereRaw('LOWER(status) = ?', ['awaiting'])
+                        ->count();
+                    $user->signedCount = DB::table('signatures')
+                        ->where('user_id', $user->id)
+                        ->whereRaw('LOWER(status) = ?', ['signed'])
+                        ->count();
+                }
+
+                $user->is_trial = $user->is_trial ?? 'true';
+                $user->plan = $user->plan ?? ($user->is_trial === 'false' ? 'expired_trial' : 'trial');
+                $user->subscription_status = $user->subscription_status ?? ($user->is_trial === 'false' ? 'expired' : 'trialing');
+
+                $success['token'] = '';
+                $success['user_data'] = $user; 
+               
+                return $this->sendResponse($result = $success, $message = 'Profile retrive successfully.', $notification = null, $error = null, $respose_code = 200);
+            } catch (\Throwable $e) {
+                \Log::error('getProfile failed', ['error' => $e->getMessage()]);
+                // Still return the authenticated user so mobile Settings/Dashboard can load.
+                $success['token'] = '';
+                $success['user_data'] = $user;
+                return $this->sendResponse($result = $success, $message = 'Profile retrive successfully.', $notification = null, $error = null, $respose_code = 200);
             }
-            
-            $followersCount = DB::table('follows')
-            ->where('following_id', $user->id)
-            ->where('status', 'accepted')
-            ->count();
-             
-            $user->followers_count = $followersCount;
-             
-            $followingCount = DB::table('follows')
-            ->where('follower_id', $user->id)
-            ->where('status', 'accepted')
-            ->count();
-            
-            $user->following_count = $followingCount;
-            
-            /*--------------------------------signatures----------------------------------------------*/
-            $AwaitingCount = DB::table('signatures')
-                ->where('user_id', $user->id)
-                ->whereRaw('LOWER(status) = ?', ['awaiting'])
-                ->count();
-
-            $user->AwaitingCount = $AwaitingCount;
-
-            $signedCount = DB::table('signatures')
-                ->where('user_id', $user->id)
-                ->whereRaw('LOWER(status) = ?', ['signed'])
-                ->count();
-
-            $user->signedCount = $signedCount;
-            $user->is_trial = $user->is_trial ?? 'true';
-            $user->plan = $user->plan ?? ($user->is_trial === 'false' ? 'expired_trial' : 'trial');
-            $user->subscription_status = $user->subscription_status ?? ($user->is_trial === 'false' ? 'expired' : 'trialing');
-
-              $success['token'] = '';
-              $success['user_data'] = $user; 
-           
-            return $this->sendResponse($result = $success, $message = 'Profile retrive successfully.', $notification = null, $error = null, $respose_code = 200);
         }else{
             return $this->sendError($result = null, $message = 'User not found.', $notification = null, $error = null, $respose_code = 200);
         }
