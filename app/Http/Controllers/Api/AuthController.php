@@ -243,12 +243,14 @@ class AuthController extends Controller
         
         $u = User::where('email', $input['email'])->first();
        
+        try {
         if(!$u){
         // Only persist known columns — production DB often requires `dob`.
         $user = User::create([
             'full_name' => $request->input('full_name'),
             'email' => $request->input('email'),
-            'password' => bcrypt($request->input('password')),
+            // Plain password — User model casts `password` => hashed
+            'password' => $request->input('password'),
             'dob' => $request->input('dob') ?: '2000-01-01',
             'country_code' => $request->input('country_code'),
             'mobile_number' => $request->input('mobile_number'),
@@ -273,7 +275,7 @@ class AuthController extends Controller
         $success['user_data'] = $dd;
         }else{
         $payload = [
-            'password' => bcrypt($request->input('password')),
+            'password' => $request->input('password'),
             'full_name' => $request->input('full_name'),
             'dob' => $request->input('dob') ?: '2000-01-01',
         ];
@@ -289,6 +291,16 @@ class AuthController extends Controller
           $success['token'] = $user->createToken('MyApp')->accessToken;
           $success['user_data'] = $user;
             
+        }
+        } catch (\Throwable $e) {
+            \Log::error('signup failed', ['error' => $e->getMessage()]);
+            return $this->sendError(
+                null,
+                'Unable to create account: ' . $e->getMessage(),
+                null,
+                null,
+                200
+            );
         }
 
         
