@@ -244,11 +244,18 @@ class AuthController extends Controller
         $u = User::where('email', $input['email'])->first();
        
         if(!$u){
-       $input['password'] = bcrypt($input['password']);
-        if (!isset($input['is_trial'])) {
-            $input['is_trial'] = 'true';
-        }
-        $user = User::create($input);
+        // Only persist known columns — production DB often requires `dob`.
+        $user = User::create([
+            'full_name' => $request->input('full_name'),
+            'email' => $request->input('email'),
+            'password' => bcrypt($request->input('password')),
+            'dob' => $request->input('dob') ?: '2000-01-01',
+            'country_code' => $request->input('country_code'),
+            'mobile_number' => $request->input('mobile_number'),
+            'image' => $input['image'] ?? null,
+            'is_trial' => $request->input('is_trial', 'true'),
+            'otp_verify' => 'TRUE',
+        ]);
         $dd= User::find($user->id);
         $rand = "9999";
         rand(1111, 9999);
@@ -265,17 +272,20 @@ class AuthController extends Controller
         $success['token'] = $dd->createToken('MyApp')->accessToken;
         $success['user_data'] = $dd;
         }else{
-        $input['password'] = bcrypt($input['password']);
+        $payload = [
+            'password' => bcrypt($request->input('password')),
+            'full_name' => $request->input('full_name'),
+            'dob' => $request->input('dob') ?: '2000-01-01',
+        ];
         $rand = "9999";
         rand(1111, 9999);
 
-          $input['otp'] = $rand;
+          $payload['otp'] = $rand;
           $currentDateTime = date('Y-m-d H:i:s');
           $futureDateTime = date('Y-m-d H:i:s', strtotime($currentDateTime . ' +15 minutes'));
-          $input['otp_time'] = $futureDateTime;
-          User::where('email', $input['email'])->update($input);
+          $payload['otp_time'] = $futureDateTime;
+          User::where('email', $input['email'])->update($payload);
           $user =  User::where('email', $input['email'])->first();
-           $user->update($input);
           $success['token'] = $user->createToken('MyApp')->accessToken;
           $success['user_data'] = $user;
             
@@ -357,6 +367,7 @@ class AuthController extends Controller
                 'full_name' => $request->full_name ?: ($email ? explode('@', $email)[0] : 'CurrentSign User'),
                 'email' => $email ?: ($provider . '_' . $providerUserId . '@privaterelay.currentsign.local'),
                 'password' => Hash::make(bin2hex(random_bytes(16))),
+                'dob' => $request->input('dob') ?: '2000-01-01',
                 'is_trial' => 'true',
                 'otp_verify' => 'TRUE',
             ]);
@@ -754,8 +765,12 @@ class AuthController extends Controller
 
 
     try {
-        
-        $data = $request->all();
+        $data = [];
+        foreach (['full_name', 'mobile_number', 'address', 'dob', 'country_code'] as $key) {
+            if ($request->filled($key)) {
+                $data[$key] = $request->input($key);
+            }
+        }
         // Handle image upload
         if ($request->hasFile('image')) {
             $image = $request->file('image');
@@ -763,9 +778,9 @@ class AuthController extends Controller
             $data['image'] = $path;
         }
 
-
-        // Update the image URL
-        User::where('id', $user->id)->update($data);
+        if (! empty($data)) {
+            User::where('id', $user->id)->update($data);
+        }
         $user =  User::where('id', $user->id)->first();
         if($user->image){
             $user->image = url('/').'/storage/app/public/'.$user->image;
