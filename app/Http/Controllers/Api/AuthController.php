@@ -102,7 +102,9 @@ class AuthController extends Controller
         
         if($user){
             try {
-                $user->image = $this->absoluteUserImageUrl($user->image);
+                $absolute = $this->absoluteUserImageUrl($user->image);
+                $user->image = $absolute;
+                $user->image_url = $absolute;
 
                 $user->followers_count = 0;
                 $user->following_count = 0;
@@ -557,14 +559,23 @@ class AuthController extends Controller
             return null;
         }
         if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
-            return $image;
+            // Always prefer https for mobile NetworkImage (cleartext blocked).
+            return preg_replace('#^http://#i', 'https://', $image);
         }
+        $path = ltrim($image, '/');
         // public disk: users/xxx.jpg → /storage/users/xxx.jpg
-        if (str_starts_with($image, 'users/')) {
-            return url('storage/' . $image);
+        if (str_starts_with($path, 'users/')) {
+            $path = 'storage/' . $path;
+        } elseif (! str_starts_with($path, 'uploads/users/') && ! str_starts_with($path, 'storage/')) {
+            // bare filename from update-profile / signup
+            $path = 'uploads/users/' . $path;
         }
-        // legacy signup path: filename in public/uploads/users
-        return url('uploads/users/' . ltrim($image, '/'));
+        $base = rtrim((string) config('app.url'), '/');
+        if ($base === '') {
+            $base = 'https://currentsign.com';
+        }
+        $base = preg_replace('#^http://#i', 'https://', $base);
+        return $base . '/' . $path;
     }
 
     public function passwordReset(Request $request)
@@ -721,9 +732,17 @@ class AuthController extends Controller
         }
         // Handle image upload (same public folder as signup)
         if ($request->hasFile('image')) {
+            $dir = public_path('uploads/users');
+            if (! is_dir($dir)) {
+                @mkdir($dir, 0755, true);
+            }
             $image = $request->file('image');
-            $imageName = time() . '_' . $user->id . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/users'), $imageName);
+            $ext = strtolower($image->getClientOriginalExtension() ?: 'jpg');
+            if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                $ext = 'jpg';
+            }
+            $imageName = time() . '_' . $user->id . '.' . $ext;
+            $image->move($dir, $imageName);
             $data['image'] = $imageName;
         }
 
@@ -731,7 +750,9 @@ class AuthController extends Controller
             User::where('id', $user->id)->update($data);
         }
         $user = User::where('id', $user->id)->first();
-        $user->image = $this->absoluteUserImageUrl($user->image);
+        $absolute = $this->absoluteUserImageUrl($user->image);
+        $user->image = $absolute;
+        $user->image_url = $absolute;
         
          $success['token'] = '';
          $success['user_data'] = $user;
