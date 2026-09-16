@@ -28,9 +28,10 @@ class BillingController extends Controller
                 'store_product_id_android' => 'currentsign_basic_monthly',
                 'stripe_price_id' => null,
                 'features' => [
-                    '10 documents / month',
-                    'Secure cloud storage',
-                    'Email signature requests',
+                    '10 documents per month',
+                    'Core e-signing functionality',
+                    'Email notifications and automated reminders',
+                    'Signature tracking',
                 ],
             ],
             [
@@ -44,9 +45,10 @@ class BillingController extends Controller
                 'store_product_id_android' => 'currentsign_standard_monthly',
                 'stripe_price_id' => null,
                 'features' => [
-                    '50 documents / month',
-                    'Priority email support',
-                    'Team-ready workflows',
+                    '50 documents per month',
+                    'All Basic features',
+                    'Bulk-send capability (up to 20 recipients per batch)',
+                    'Team collaboration (up to 3 users)',
                 ],
             ],
             [
@@ -60,9 +62,12 @@ class BillingController extends Controller
                 'store_product_id_android' => 'currentsign_premium_monthly',
                 'stripe_price_id' => null,
                 'features' => [
-                    'Unlimited documents',
-                    'Premium support',
-                    'Advanced audit trail',
+                    'Unlimited documents per month',
+                    'All Standard features',
+                    'Advanced templates and workflow automation',
+                    'API access for custom integrations',
+                    'Expanded team accounts (up to 10 users)',
+                    'Priority support and dedicated account manager',
                 ],
             ],
         ];

@@ -102,9 +102,7 @@ class AuthController extends Controller
         
         if($user){
             try {
-                if($user->image){
-                     $user->image = url("/") . "/" . "storage/app/public/" .$user->image;
-                }
+                $user->image = $this->absoluteUserImageUrl($user->image);
 
                 $user->followers_count = 0;
                 $user->following_count = 0;
@@ -534,67 +532,64 @@ class AuthController extends Controller
     
     
 
+    /** Resolve user by email or country_code-mobile identity. */
+    private function findUserByIdentity(?string $identity)
+    {
+        if ($identity === null || trim($identity) === '') {
+            return null;
+        }
+        $identity = trim($identity);
+        if (filter_var($identity, FILTER_VALIDATE_EMAIL)) {
+            return User::where('email', $identity)->first();
+        }
+        $parts = explode('-', $identity);
+        if (count($parts) == 2) {
+            return User::where('country_code', $parts[0])
+                ->where('mobile_number', $parts[1])
+                ->first();
+        }
+        return null;
+    }
+
+    private function absoluteUserImageUrl(?string $image): ?string
+    {
+        if ($image === null || $image === '') {
+            return null;
+        }
+        if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
+            return $image;
+        }
+        // public disk: users/xxx.jpg → /storage/users/xxx.jpg
+        if (str_starts_with($image, 'users/')) {
+            return url('storage/' . $image);
+        }
+        // legacy signup path: filename in public/uploads/users
+        return url('uploads/users/' . ltrim($image, '/'));
+    }
+
     public function passwordReset(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'identity' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            $validator_error = array_values($validator->errors()->toArray());
-            $validator_error = array_merge(...$validator_error);
-            return $this->sendError($result = null, $message = @$validator_error[0], $notification = null, $error = null, $respose_code = 200);
+        $identity = $request->input('identity') ?: $request->input('email');
+        if (! $identity) {
+            return $this->sendError($result = null, $message = 'The identity field is required.', $notification = null, $error = null, $respose_code = 200);
         }
 
-        $identity = $request->input('identity'); 
-
-        // Attempt authentication with email
-        if (filter_var($identity, FILTER_VALIDATE_EMAIL)) {
-            $credentials = ['email' => $identity];
-
-            $user = User::where('email', $identity)->first();
-            
-            
-            
-        } else {
-            
-          //  echo 'sd';die;
-            // Attempt authentication with mobile number and country code
-            $parts = explode('-', $identity);
-            if (count($parts) == 2) {
-                $countryCode = $parts[0];
-                $mobileNumber = $parts[1];
-                // Check if there's an associated email
-                $user = User::where('country_code', $countryCode)
-                    ->where('mobile_number', $mobileNumber)
-                    ->first();
-                if ($user) {
-                    // Use email for authentication
-                    $credentials = ['email' => $user->email];
-                } else {
-                    return $this->sendError($result = null, $message = 'Email not found for the provided mobile number.', $notification = null, $error = null, $respose_code = 200);
-                }
-            } else {
-                return $this->sendError($result = null, $message = 'Invalid identity format.', $notification = null, $error = null, $respose_code = 200);
-            }
+        $user = $this->findUserByIdentity($identity);
+        if (! $user) {
+            return $this->sendError($result = null, $message = 'User not found.', $notification = null, $error = null, $respose_code = 200);
         }
 
-
-        if(!$user){
-                    return $this->sendError($result = null, $message = 'User not found.', $notification = null, $error = null, $respose_code = 200);
-
-        }
-
-        $rand = "9999";
-        rand(1111, 9999);
+        // Staging/preview: fixed OTP. Production mailer can replace later.
+        $rand = '9999';
+        $futureDateTime = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
         $user->otp = $rand;
-
-        $currentDateTime = date('Y-m-d H:i:s');
-        $futureDateTime = date('Y-m-d H:i:s', strtotime($currentDateTime . ' +15 minutes'));
-
         $user->otp_time = $futureDateTime;
-
+        $user->otp_verify = 'FALSE';
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'otp_reset_password')) {
+            $user->otp_reset_password = $rand;
+            $user->otp_reset_password_expiration = $futureDateTime;
+        }
         $user->save();
 
         return $this->sendResponse($result = null, $message = 'Otp send successfully.', $notification = null, $error = null, $respose_code = 200);
@@ -602,93 +597,54 @@ class AuthController extends Controller
 
     public function verifyOtp(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'identity' => 'required',
-            'otp' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            $validator_error = array_values($validator->errors()->toArray());
-            $validator_error = array_merge(...$validator_error);
-            return $this->sendError($result = null, $message = @$validator_error[0], $notification = null, $error = null, $respose_code = 200);
-        }
-
-        $identity = $request->input('identity');
+        $identity = $request->input('identity') ?: $request->input('email');
         $otp = $request->input('otp');
-
-        // Attempt authentication with email
-        if (filter_var($identity, FILTER_VALIDATE_EMAIL)) {
-            $credentials = ['email' => $identity];
-
-            $user = User::where('email', $identity)->first();
-            if(!$user){
-                return $this->sendError($result = null, $message = 'Email not found for the provided mobile number.', $notification = null, $error = null, $respose_code = 200);
-            }
-        } else {
-            // Attempt authentication with mobile number and country code
-            $parts = explode('-', $identity);
-            if (count($parts) == 2) {
-                $countryCode = $parts[0];
-                $mobileNumber = $parts[1];
-                // Check if there's an associated email
-                $user = User::where('country_code', $countryCode)
-                    ->where('mobile_number', $mobileNumber)
-                    ->first();
-                if ($user) {
-                    // Use email for authentication
-                    $credentials = ['email' => $user->email];
-                } else {
-                    return $this->sendError($result = null, $message = 'Email not found for the provided mobile number.', $notification = null, $error = null, $respose_code = 200);
-                }
-            } else {
-                return $this->sendError($result = null, $message = 'Invalid identity format.', $notification = null, $error = null, $respose_code = 200);
-            }
+        if (! $identity || $otp === null || $otp === '') {
+            return $this->sendError($result = null, $message = 'Identity and OTP are required.', $notification = null, $error = null, $respose_code = 200);
         }
 
-        if ($otp != $user->otp) {
-            $result1 = [
-        'user_id' => $user->id,
-        // Add other result data if necessary
-    ];
-    
+        $user = $this->findUserByIdentity($identity);
+        if (! $user) {
+            return $this->sendError($result = null, $message = 'User not found.', $notification = null, $error = null, $respose_code = 200);
+        }
+
+        $expected = $user->otp;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'otp_reset_password') && $user->otp_reset_password) {
+            $expected = $user->otp_reset_password;
+        }
+        if ((string) $otp !== (string) $expected) {
             return $this->sendError($result = null, $message = 'Otp not matched.', $notification = null, $error = null, $respose_code = 200);
         }
 
-        $dbTimestamp = strtotime($user->otp_time);
-        $currentTime = time();
-        $actualTime = strtotime('-15 minutes', $dbTimestamp);
-        $futureTime = $dbTimestamp;
-
-        if ($currentTime >= $actualTime && $currentTime <= $futureTime) {
-        } else {
-           
-         $result1 = [
-        'user_id' => $user->id,
-        // Add other result data if necessary
-    ];
+        $expiresAt = $user->otp_time;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'otp_reset_password_expiration') && $user->otp_reset_password_expiration) {
+            $expiresAt = $user->otp_reset_password_expiration;
+        }
+        $dbTimestamp = strtotime((string) $expiresAt);
+        if (! $dbTimestamp || time() > $dbTimestamp) {
             return $this->sendError($result = null, $message = 'Otp Expired.', $notification = null, $error = null, $respose_code = 200);
         }
 
-        $user->otp = null;
-
-        $user->otp_time = null;
-        
-        $user->otp_verify = "TRUE";
-
+        // Keep OTP until create-password so reset flow can complete without a session.
+        $user->otp_verify = 'TRUE';
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'otp_reset_password')) {
+            $user->otp_reset_password = (string) $otp;
+            $user->otp_reset_password_expiration = $expiresAt;
+        }
         $user->save();
-        
-        
-          $success['token'] = $this->issueApiToken($user);
-          $success['user_data'] = $user;
-          
+
+        $success['token'] = '';
+        $success['user_data'] = ['id' => $user->id, 'email' => $user->email];
+        $success['otp_verified'] = true;
+
         return $this->sendResponse($result = $success, $message = 'Otp verified successfully.', $notification = null, $error = null, $respose_code = 200);
     }
     
     
     public function createNewPasswordWithoutLogin(Request $request)
     {
-       
-        $validator = Validator::make($request->all(), [
+        $identity = $request->input('identity') ?: $request->input('email');
+        $validator = Validator::make(array_merge($request->all(), ['identity' => $identity]), [
             'identity' => 'required',
             'otp' => 'required',
             'password' => ['required', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/'],
@@ -701,67 +657,41 @@ class AuthController extends Controller
             return $this->sendError($result = null, $message = @$validator_error[0], $notification = null, $error = null, $respose_code = 200);
         }
 
-
-
-
-        $identity = $request->input('identity');
         $otp = $request->input('otp');
-        $password = $request->input('password');
-
-        // Attempt authentication with email
-        if (filter_var($identity, FILTER_VALIDATE_EMAIL)) {
-            $credentials = ['email' => $identity];
-
-            $user = User::where('email', $identity)->first();
-        } else {
-            // Attempt authentication with mobile number and country code
-            $parts = explode('-', $identity);
-            if (count($parts) == 2) {
-                $countryCode = $parts[0];
-                $mobileNumber = $parts[1];
-                // Check if there's an associated email
-                $user = User::where('country_code', $countryCode)
-                    ->where('mobile_number', $mobileNumber)
-                    ->first();
-                if ($user) {
-                    // Use email for authentication
-                    $credentials = ['email' => $user->email];
-                } else {
-                    return $this->sendError($result = null, $message = 'Email not found for the provided mobile number.', $notification = null, $error = null, $respose_code = 200);
-                }
-            } else {
-                return $this->sendError($result = null, $message = 'Invalid identity format.', $notification = null, $error = null, $respose_code = 200);
-            }
+        $user = $this->findUserByIdentity($identity);
+        if (! $user) {
+            return $this->sendError($result = null, $message = 'User not found.', $notification = null, $error = null, $respose_code = 200);
         }
- 
-        
-         if(!$user) {
-                    return $this->sendError($result = null, $message = 'User not found.', $notification = null, $error = null, $respose_code = 200);
-                }
-        
 
-        if ($otp != $user->otp_reset_password) {
+        $storedOtp = null;
+        $expiresAt = null;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'otp_reset_password') && $user->otp_reset_password) {
+            $storedOtp = $user->otp_reset_password;
+            $expiresAt = $user->otp_reset_password_expiration;
+        }
+        if ($storedOtp === null) {
+            $storedOtp = $user->otp;
+            $expiresAt = $user->otp_time;
+        }
+
+        if ((string) $otp !== (string) $storedOtp) {
             return $this->sendError($result = null, $message = 'Otp not matched.', $notification = null, $error = null, $respose_code = 200);
         }
 
-        $dbTimestamp = strtotime($user->otp_reset_password_expiration);
-        $currentTime = time();
-        $actualTime = strtotime('-15 minutes', $dbTimestamp);
-        $futureTime = $dbTimestamp;
-
-        if ($currentTime >= $actualTime && $currentTime <= $futureTime) {
-        } else {
+        $dbTimestamp = strtotime((string) $expiresAt);
+        if (! $dbTimestamp || time() > $dbTimestamp) {
             return $this->sendError($result = null, $message = 'Otp Expired.', $notification = null, $error = null, $respose_code = 200);
         }
 
         $user->password = bcrypt($request->password);
-
-        $user->otp_reset_password = null;
-
-        $user->otp_reset_password_expiration = null;
-
+        $user->otp = null;
+        $user->otp_time = null;
+        $user->otp_verify = 'FALSE';
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'otp_reset_password')) {
+            $user->otp_reset_password = null;
+            $user->otp_reset_password_expiration = null;
+        }
         $user->save();
-
 
         return $this->sendResponse($result = null, $message = 'Password updated successfully with otp.', $notification = null, $error = null, $respose_code = 200);
     }
@@ -789,20 +719,19 @@ class AuthController extends Controller
                 $data[$key] = $request->input($key);
             }
         }
-        // Handle image upload
+        // Handle image upload (same public folder as signup)
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $path = $image->store('users', 'public'); // Store in the `storage/app/public/users` directory
-            $data['image'] = $path;
+            $imageName = time() . '_' . $user->id . '.' . $image->getClientOriginalExtension();
+            $image->move(public_path('uploads/users'), $imageName);
+            $data['image'] = $imageName;
         }
 
         if (! empty($data)) {
             User::where('id', $user->id)->update($data);
         }
-        $user =  User::where('id', $user->id)->first();
-        if($user->image){
-            $user->image = url('/').'/storage/app/public/'.$user->image;
-        }
+        $user = User::where('id', $user->id)->first();
+        $user->image = $this->absoluteUserImageUrl($user->image);
         
          $success['token'] = '';
          $success['user_data'] = $user;
@@ -862,9 +791,7 @@ public function getUsers(){
     $user = Auth::guard('api')->user();
     $users = User::Where('id', '!=', $user->id)->get();
     foreach($users as &$u){
-        if($u->image){
-            $u->image = url('/').'/storage/app/public/'.$u->image;
-        }
+        $u->image = $this->absoluteUserImageUrl($u->image);
                 $isFollowing = DB::table('follows')
                     ->where('follower_id', $user->id)
                     ->where('following_id', $u->id)
