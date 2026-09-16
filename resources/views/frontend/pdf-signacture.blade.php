@@ -1148,6 +1148,36 @@
     Array.from(document.querySelectorAll('.signature-box')).forEach(placeSignatureFromBox);
   }
 
+  /** Save PDF in Flutter WebView (pdf.save is blocked) or fall back to browser download. */
+  async function deliverPdfToDevice(pdf, filename) {
+    const dataUri = pdf.output('datauristring');
+    const base64 = (dataUri.split(',')[1] || '').trim();
+    if (base64 && window.CurrentSignApp && typeof window.CurrentSignApp.postMessage === 'function') {
+      window.CurrentSignApp.postMessage(JSON.stringify({
+        type: 'pdf_download',
+        filename: filename,
+        base64: base64,
+      }));
+      return true;
+    }
+    try {
+      pdf.save(filename);
+      return true;
+    } catch (err) {
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      return true;
+    }
+  }
+
   window.downloadPDF = async function downloadPDF() {
     const pages = Array.from(pageWrappers.values());
     if (!pages.length) {
@@ -1181,9 +1211,12 @@
 
       setActivePage(currentPage, false);
 
+      const filename = 'signed-document.pdf';
+      await deliverPdfToDevice(pdf, filename);
+
       const pdfBlob = pdf.output('blob');
       const formData = new FormData();
-      formData.append('pdf_file', pdfBlob, 'signed-document.pdf');
+      formData.append('pdf_file', pdfBlob, filename);
       formData.append('id', '{{ $signature->id }}');
 
       const response = await fetch("{{ url('/upload-file') }}", {
@@ -1193,17 +1226,23 @@
           'Accept': 'application/json',
         },
         body: formData,
+        credentials: 'same-origin',
       });
 
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.message || ('Upload failed (' + response.status + ')'));
+        showSignNotice(
+          (result.message || ('Upload failed (' + response.status + ')')) +
+            ' A PDF copy was still saved on this device.',
+          'error',
+          'Send failed'
+        );
+        return;
       }
 
-      pdf.save('signed-document.pdf');
       showSignNotice(
-        result.message || 'Signed document sent successfully. The sender can view it on their dashboard.',
+        result.message || 'Signed document sent successfully. A copy was also saved on this device.',
         'success',
         'Document sent'
       );

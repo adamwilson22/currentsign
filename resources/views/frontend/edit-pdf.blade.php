@@ -626,6 +626,34 @@
     Array.from(document.querySelectorAll('.signature-box')).forEach(placeSignatureFromBox);
   }
 
+  async function deliverPdfToDevice(pdf, filename) {
+    const dataUri = pdf.output('datauristring');
+    const base64 = (dataUri.split(',')[1] || '').trim();
+    if (base64 && window.CurrentSignApp && typeof window.CurrentSignApp.postMessage === 'function') {
+      window.CurrentSignApp.postMessage(JSON.stringify({
+        type: 'pdf_download',
+        filename: filename,
+        base64: base64,
+      }));
+      return true;
+    }
+    try {
+      pdf.save(filename);
+      return true;
+    } catch (err) {
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      return true;
+    }
+  }
+
   window.downloadPDF = async function downloadPDF() {
     const pages = Array.from(pageWrappers.values());
     if (!pages.length) {
@@ -647,7 +675,7 @@
       pdf.addImage(img, 'JPEG', 0, 0, w, h);
     }
     setActivePage(currentPage, false);
-    pdf.save('edited.pdf');
+    await deliverPdfToDevice(pdf, 'edited.pdf');
   };
 })();
   </script>
