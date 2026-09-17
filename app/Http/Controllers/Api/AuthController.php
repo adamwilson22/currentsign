@@ -559,27 +559,21 @@ class AuthController extends Controller
             return null;
         }
         if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
-            // Always prefer https for mobile NetworkImage (cleartext blocked).
             $url = preg_replace('#^http://#i', 'https://', $image);
-            // Hosting serves user avatars under /public/uploads/users/...
-            $url = str_replace('/uploads/users/', '/public/uploads/users/', $url);
+            // Prefer /uploads/users (Laravel public docroot). Also keep /public/uploads for legacy hosts.
             return $url;
         }
-        $path = ltrim($image, '/');
-        if (str_starts_with($path, 'users/')) {
-            $path = 'storage/' . $path;
-        } elseif (str_starts_with($path, 'uploads/users/')) {
-            $path = 'public/' . $path;
-        } elseif (! str_starts_with($path, 'public/uploads/users/') && ! str_starts_with($path, 'storage/')) {
-            // bare filename — match admin/web convention
-            $path = 'public/uploads/users/' . $path;
+        $file = basename(ltrim($image, '/'));
+        if ($file === '' || $file === '.' || $file === '..') {
+            return null;
         }
         $base = rtrim((string) config('app.url'), '/');
         if ($base === '') {
             $base = 'https://currentsign.com';
         }
         $base = preg_replace('#^http://#i', 'https://', $base);
-        return $base . '/' . $path;
+        // Standard Laravel public/ is the web root → /uploads/users/{file}
+        return $base . '/uploads/users/' . $file;
     }
 
     public function passwordReset(Request $request)
