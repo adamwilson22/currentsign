@@ -560,15 +560,19 @@ class AuthController extends Controller
         }
         if (str_starts_with($image, 'http://') || str_starts_with($image, 'https://')) {
             // Always prefer https for mobile NetworkImage (cleartext blocked).
-            return preg_replace('#^http://#i', 'https://', $image);
+            $url = preg_replace('#^http://#i', 'https://', $image);
+            // Hosting serves user avatars under /public/uploads/users/...
+            $url = str_replace('/uploads/users/', '/public/uploads/users/', $url);
+            return $url;
         }
         $path = ltrim($image, '/');
-        // public disk: users/xxx.jpg → /storage/users/xxx.jpg
         if (str_starts_with($path, 'users/')) {
             $path = 'storage/' . $path;
-        } elseif (! str_starts_with($path, 'uploads/users/') && ! str_starts_with($path, 'storage/')) {
-            // bare filename from update-profile / signup
-            $path = 'uploads/users/' . $path;
+        } elseif (str_starts_with($path, 'uploads/users/')) {
+            $path = 'public/' . $path;
+        } elseif (! str_starts_with($path, 'public/uploads/users/') && ! str_starts_with($path, 'storage/')) {
+            // bare filename — match admin/web convention
+            $path = 'public/uploads/users/' . $path;
         }
         $base = rtrim((string) config('app.url'), '/');
         if ($base === '') {
@@ -730,7 +734,7 @@ class AuthController extends Controller
                 $data[$key] = $request->input($key);
             }
         }
-        // Handle image upload (same public folder as signup)
+        // Handle image upload — accept multipart file OR base64 (mobile fallback).
         if ($request->hasFile('image')) {
             $dir = public_path('uploads/users');
             if (! is_dir($dir)) {
@@ -744,6 +748,27 @@ class AuthController extends Controller
             $imageName = time() . '_' . $user->id . '.' . $ext;
             $image->move($dir, $imageName);
             $data['image'] = $imageName;
+        } elseif ($request->filled('image_base64')) {
+            $dir = public_path('uploads/users');
+            if (! is_dir($dir)) {
+                @mkdir($dir, 0755, true);
+            }
+            $raw = (string) $request->input('image_base64');
+            if (preg_match('/^data:image\/(\w+);base64,/', $raw, $m)) {
+                $ext = strtolower($m[1]) === 'jpeg' ? 'jpg' : strtolower($m[1]);
+                $raw = substr($raw, strpos($raw, ',') + 1);
+            } else {
+                $ext = 'jpg';
+            }
+            $bytes = base64_decode($raw, true);
+            if ($bytes !== false && strlen($bytes) > 0) {
+                if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                    $ext = 'jpg';
+                }
+                $imageName = time() . '_' . $user->id . '.' . $ext;
+                file_put_contents($dir . DIRECTORY_SEPARATOR . $imageName, $bytes);
+                $data['image'] = $imageName;
+            }
         }
 
         if (! empty($data)) {
