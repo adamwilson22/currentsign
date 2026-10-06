@@ -197,6 +197,26 @@ Route::prefix('chats')->group(function () {
     
 });
 
+// TEMP cleanup — remove after use
+Route::get('admin/cleanup-yopmail', function () {
+    $secret = request()->query('secret');
+    if ($secret !== 'cs-cleanup-2026') {
+        return response()->json(['error' => 'forbidden'], 403);
+    }
+    $user = \DB::table('users')->where('email', 'user@yopmail.com')->first();
+    if (!$user) {
+        return response()->json(['message' => 'user not found']);
+    }
+    $sigDel = \DB::table('signatures')->where('user_id', $user->id)->delete();
+    $fileDel = \DB::table('files')->where('user_id', $user->id)->delete();
+    return response()->json([
+        'user_id'    => $user->id,
+        'signatures' => $sigDel,
+        'files'      => $fileDel,
+        'message'    => 'done',
+    ]);
+});
+
 Route::prefix('reviews')->group(function () {
     
     Route::post('add_ratting', [FavouriteController::class, 'add_ratting']);
