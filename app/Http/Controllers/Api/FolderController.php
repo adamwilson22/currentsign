@@ -433,7 +433,9 @@ $user = Auth::guard('api')->user();
     $emails = $request->input('emails');
     if (is_string($emails)) {
         $decoded = json_decode($emails, true);
-        $emails = is_array($decoded) ? $decoded : [$emails];
+        $emails = is_array($decoded)
+            ? $decoded
+            : preg_split('/[,;\r\n]+/', $emails, -1, PREG_SPLIT_NO_EMPTY);
     }
     if (!is_array($emails)) {
         $emails = $request->filled('email') ? [$request->input('email')] : [];
