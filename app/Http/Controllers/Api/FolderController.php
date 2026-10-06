@@ -474,18 +474,22 @@ $user = Auth::guard('api')->user();
 
     $page = max(1, (int) $request->input('page', 1));
     $batchId = (string) Str::uuid();
+    $hasBatchColumn = \Illuminate\Support\Facades\Schema::hasColumn('signatures', 'batch_id');
     $rows = [];
     foreach ($emails as $email) {
-        $id = DB::table('signatures')->insertGetId([
+        $signatureData = [
             'user_id' => $user_id,
-            'batch_id' => $batchId,
             'email' => $email,
             'pdf_path' => $filePath . $fileName,
             'page' => $page,
             'status' => 'Awaiting',
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+        if ($hasBatchColumn) {
+            $signatureData['batch_id'] = $batchId;
+        }
+        $id = DB::table('signatures')->insertGetId($signatureData);
         $link = url('/signature?id=' . $id);
         $mailOk = (bool) @mail(
             $email,
