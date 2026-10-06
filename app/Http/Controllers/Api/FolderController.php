@@ -8,6 +8,7 @@ use Validator;
 use Hash;
 use DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 
 use Illuminate\Support\Facades\Mail;
@@ -429,6 +430,24 @@ $user = Auth::guard('api')->user();
         );
     }
 
+    $emails = $request->input('emails');
+    if (is_string($emails)) {
+        $decoded = json_decode($emails, true);
+        $emails = is_array($decoded) ? $decoded : [$emails];
+    }
+    if (!is_array($emails)) {
+        $emails = $request->filled('email') ? [$request->input('email')] : [];
+    }
+    $emails = collect($emails)
+        ->map(fn ($email) => trim((string) $email))
+        ->filter()
+        ->unique()
+        ->values();
+
+    if ($emails->isEmpty() || $emails->contains(fn ($email) => !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+        return $this->sendError(null, 'At least one valid recipient email is required.', [], [], 422);
+    }
+
     // Validate file upload
     if (!$request->hasFile('pdf_path')) {
         return $this->sendError(
@@ -453,47 +472,50 @@ $user = Auth::guard('api')->user();
     // Move the file
     $file->move($destinationPath, $fileName);
 
-    // Prepare data for insertion (exclude 'pdf_path' from request to avoid unknown column)
-    $data = $request->except(['_token', 'pdf_path']);
-    $data['pdf_path'] = $filePath . $fileName;
-    $data['user_id'] = $user_id;
-    $data['page'] = $request->page ?? 1;
-    $data['status'] = 'Awaiting';
-    // Insert into database
-    $id = DB::table('signatures')->insertGetId($data);
+    $page = max(1, (int) $request->input('page', 1));
+    $batchId = (string) Str::uuid();
+    $rows = [];
+    foreach ($emails as $email) {
+        $id = DB::table('signatures')->insertGetId([
+            'user_id' => $user_id,
+            'batch_id' => $batchId,
+            'email' => $email,
+            'pdf_path' => $filePath . $fileName,
+            'page' => $page,
+            'status' => 'Awaiting',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $link = url('/signature?id=' . $id);
+        $mailOk = (bool) @mail(
+            $email,
+            'Signature PDF',
+            "Hi,<br><br>Please sign this document.<br><a href='" . $link . "'>View Document</a>",
+            "From: sign@currentsign.com\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nX-Mailer: PHP/" . phpversion()
+        );
+        $rows[] = [
+            'signature_id' => $id,
+            'email' => $email,
+            'status' => 'Awaiting',
+            'page' => $page,
+            'signing_link' => $link,
+            'email_sent' => $mailOk,
+        ];
+    }
 
-    // Check trial count
+    // Check trial count per recipient request.
     $count = DB::table('signatures')->where('user_id', $user_id)->count();
     if ($count >= 5) {
         DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']);
     }
 
-    $link = url('/signature?id=' . $id);
-    $mailOk = false;
-
-    if ($request->filled('email')) {
-        $subject = "Signature PDF";
-        $emailid = $request->email;
-        $message = "Hi,<br><br>Please sign this document.<br><a href='" . $link . "'>View Document</a>";
-
-        $headers = "From: sign@currentsign.com\r\n";
-        $headers .= "MIME-Version: 1.0\r\n";
-        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "X-Mailer: PHP/" . phpversion();
-
-        $mailOk = (bool) @mail($emailid, $subject, $message, $headers);
-    }
-
     return $this->sendResponse(
         $result = [
-            'signature_id' => $id,
+            'batch_id' => $batchId,
+            'signatures' => $rows,
             'pdf_path' => $this->publicAssetUrl($filePath . $fileName),
-            'signing_link' => $link,
-            'email_sent' => $mailOk,
         ],
-        $message = $mailOk
-            ? 'Signature uploaded and email sent successfully.'
-            : 'Document saved. Use the signing link if email was not delivered.',
+        $message = 'Document sent to ' . $emails->count() . ' recipient(s).',
         $notification = null,
         $error = null,
         $respose_code = 200
