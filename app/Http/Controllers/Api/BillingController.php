@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\EntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use Validator;
@@ -85,6 +85,9 @@ class BillingController extends Controller
         }
 
         $user = Auth::guard('api')->user();
+        $row = DB::table('users')->where('id', $user->id)->first() ?: $user;
+        $snap = app(EntitlementService::class)->entitlementSnapshot($row);
+
         $sub = null;
         if (Schema::hasTable('subscriptions')) {
             $sub = DB::table('subscriptions')
@@ -93,19 +96,12 @@ class BillingController extends Controller
                 ->first();
         }
 
-        $isTrial = ($user->is_trial ?? 'true') !== 'false';
-        $status = $sub->status ?? ($user->subscription_status ?? ($isTrial ? 'trialing' : 'expired'));
-        $planId = $sub->plan_id ?? ($user->plan ?? ($isTrial ? 'trial' : 'expired_trial'));
-
-        return $this->sendResponse([
-            'plan' => $planId,
-            'status' => $status,
-            'is_trial' => $isTrial,
-            'source' => $sub->source ?? 'trial',
-            'current_period_end' => $sub->current_period_end ?? null,
+        return $this->sendResponse(array_merge($snap, [
+            'source' => $sub->source ?? ($snap['is_trial'] ? 'trial' : 'unknown'),
             'cancel_at_period_end' => (bool) ($sub->cancel_at_period_end ?? false),
-            'docs_per_month' => $user->docs_per_month ?? $this->docsForPlan($planId),
-        ], 'Entitlement fetched.');
+            'current_period_end' => $sub->current_period_end ?? $snap['current_period_end'],
+            'upgrade_url' => url('/pricing'),
+        ]), 'Entitlement fetched.');
     }
 
     public function verifyIap(Request $request)
@@ -243,6 +239,16 @@ class BillingController extends Controller
     ): void {
         $periodEnd = now()->addMonth();
 
+        app(EntitlementService::class)->activatePlan(
+            $userId,
+            $planId,
+            null,
+            $txnId,
+            (string) $periodEnd->getTimestamp(),
+            $source,
+            $productId
+        );
+
         if (Schema::hasTable('subscriptions')) {
             DB::table('subscriptions')->updateOrInsert(
                 ['user_id' => $userId, 'store_transaction_id' => $txnId],
@@ -279,14 +285,6 @@ class BillingController extends Controller
                 ]);
             }
         }
-
-        $update = [
-            'is_trial' => 'false',
-            'plan' => $planId,
-            'subscription_status' => 'active',
-            'docs_per_month' => $this->docsForPlan($planId),
-        ];
-        User::where('id', $userId)->update($update);
     }
 
     private function planIdFromProduct(?string $productId): ?string

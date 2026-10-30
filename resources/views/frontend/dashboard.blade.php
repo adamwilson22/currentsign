@@ -15,11 +15,6 @@
                 @if(session('success'))
                     <div class="alert alert-success">
                         {{ session('success') }}
-                        @if(session('signing_link'))
-                            <div class="mt-2">
-                                <a href="{{ session('signing_link') }}" target="_blank" rel="noopener">Open signing link</a>
-                            </div>
-                        @endif
                     </div>
                 @endif
                 @if($errors->any())
@@ -58,6 +53,12 @@
                     <div class="cs-app-actions">
                         <a href="{{ url('user/documents') }}" class="cs-btn cs-btn--primary">Upload Document</a>
                         <button class="cs-btn cs-btn--ghost-white" data-toggle="modal" data-target="#upload">Send for Signature</button>
+                        <a href="{{ url('/pricing') }}" class="cs-btn cs-btn--ghost-white">Plans &amp; billing</a>
+                        @auth
+                            @if(!empty(Auth::user()->stripe_customer_id))
+                                <a href="{{ url('/billing/portal') }}" class="cs-btn cs-btn--ghost-white">Manage subscription</a>
+                            @endif
+                        @endauth
                     </div>
                 </div>
 
@@ -121,7 +122,15 @@
     </div>
 </section>
 
-<div class="modal fade cs-theme-modal" id="upload" tabindex="-1" role="dialog" aria-hidden="true">
+@php
+    $pendingSend = session(\App\Services\PendingSignatureSend::SESSION_KEY);
+    $hasPendingSend = is_array($pendingSend)
+        && !empty($pendingSend['pdf_path'])
+        && (int) ($pendingSend['user_id'] ?? 0) === (int) auth()->id();
+    $reopenSend = (bool) session('reopen_send_modal');
+@endphp
+<div class="modal fade cs-theme-modal" id="upload" tabindex="-1" role="dialog" aria-hidden="true"
+     data-auto-open="{{ $reopenSend ? '1' : '0' }}">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content cs-theme-modal__content">
       
@@ -132,20 +141,31 @@
         </div>
         
         <!-- Modal body -->
-        <div class="modal-body cs-theme-modal__body">
+        <div class="modal-body cs-theme-modal__body" style="color:#f3f6fb;">
           <form action="{{ url('/user/submitsignacture') }}" method="POST" enctype="multipart/form-data" class="cs-app-form">
               @csrf
+              @if($hasPendingSend)
+                  <input type="hidden" name="use_pending" value="1">
+                  <div class="form-group cs-field">
+                      <label style="color:rgba(255,255,255,.85);">Document</label>
+                      <p class="mb-0" style="color:#fff;font-weight:600;">
+                          {{ $pendingSend['original_name'] ?? basename($pendingSend['pdf_path']) }}
+                      </p>
+                      <small style="color:rgba(255,255,255,.65);">Saved — no need to choose the file again.</small>
+                  </div>
+              @else
+                  <div class="form-group cs-field">
+                      <label style="color:rgba(255,255,255,.85);">Add Document</label>
+                      <input type="file" name="pdf_path" class="form-control" required accept="application/pdf">
+                  </div>
+              @endif
               <div class="form-group cs-field">
-                  <label>Add Document</label>
-                  <input type="file" name="pdf_path" class="form-control" required>
+                  <label style="color:rgba(255,255,255,.85);">Email</label>
+                  <input type="email" class="form-control" name="email" value="{{ old('email', $hasPendingSend ? ($pendingSend['email'] ?? '') : '') }}" style="color:#fff;">
               </div>
               <div class="form-group cs-field">
-                  <label>Email</label>
-                  <input type="email" class="form-control" name="email" > 
-              </div>
-              <div class="form-group cs-field">
-                  <label>Page no. to sign</label>
-                  <input type="number" class="form-control" value="1" name="page" > 
+                  <label style="color:rgba(255,255,255,.85);">Page no. to sign</label>
+                  <input type="number" class="form-control" name="page" value="{{ old('page', $hasPendingSend ? ($pendingSend['page'] ?? 1) : 1) }}" style="color:#fff;">
               </div>
               <div class="form-group mb-0">
                   <button type="submit" class="cs-btn cs-btn--primary">Submit</button>
@@ -158,6 +178,25 @@
       </div>
     </div>
   </div>
+<script>
+(function () {
+    var modal = document.getElementById('upload');
+    if (!modal || modal.getAttribute('data-auto-open') !== '1') return;
+    function openSendModal() {
+        if (window.jQuery && jQuery.fn && jQuery.fn.modal) {
+            jQuery(modal).modal('show');
+            return;
+        }
+        modal.classList.add('show');
+        modal.style.display = 'block';
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', openSendModal);
+    } else {
+        openSendModal();
+    }
+})();
+</script>
 
 @include('frontend.include.footer')
 </body>

@@ -292,3 +292,5 @@ document.querySelectorAll('a[href^="#"], a[href*="/#"]').forEach(function (a) {
     });
 });
 </script>
+
+@include('frontend.include.upgrade-prompt')

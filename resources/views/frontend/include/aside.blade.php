@@ -21,6 +21,10 @@
             <i class="fa fa-bell" aria-hidden="true"></i>
             Notifications
         </a>
+        <a href="{{ url('/pricing') }}" class="cs-app-nav__link {{ ($menu ?? '') === 'pricing' ? 'is-active' : '' }}">
+            <i class="fa fa-credit-card" aria-hidden="true"></i>
+            Plans
+        </a>
         <a href="{{ url('/logout') }}" class="cs-app-nav__link">
             <i class="fa fa-sign-out" aria-hidden="true"></i>
             Log Out

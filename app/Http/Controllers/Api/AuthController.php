@@ -136,6 +136,14 @@ class AuthController extends Controller
                 $user->plan = $user->plan ?? ($user->is_trial === 'false' ? 'expired_trial' : 'trial');
                 $user->subscription_status = $user->subscription_status ?? ($user->is_trial === 'false' ? 'expired' : 'trialing');
 
+                $row = DB::table('users')->where('id', $user->id)->first() ?: $user;
+                $snap = app(\App\Services\EntitlementService::class)->entitlementSnapshot($row);
+                $user->trial_remaining = $snap['trial_remaining'];
+                $user->sends_remaining = $snap['sends_remaining'];
+                $user->can_send = $snap['can_send'];
+                $user->docs_per_month = $snap['docs_per_month'];
+                $user->sends_this_period = $snap['sends_this_period'];
+
                 $success['token'] = '';
                 $success['user_data'] = $user; 
                

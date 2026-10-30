@@ -1224,9 +1224,23 @@ body {
   background: linear-gradient(150deg, rgba(197,162,125,.18), rgba(255,255,255,.08));
   border-color: rgba(197,162,125,.45);
 }
+.cs-price-card--current {
+  position: relative;
+  background: linear-gradient(150deg, rgba(197,162,125,.28), rgba(255,255,255,.1));
+  border-color: var(--cs-gold-light);
+  box-shadow: 0 0 0 2px rgba(197,162,125,.55), 0 18px 56px rgba(197,162,125,.28);
+  transform: translateY(-4px);
+}
+.cs-price-card--current .cs-price-card__tag {
+  background: #fff;
+  color: var(--cs-navy);
+}
 .cs-price-card--premium {
   border-color: rgba(197,162,125,.3);
   box-shadow: 0 16px 52px rgba(197,162,125,.15);
+}
+.cs-price-card--premium.cs-price-card--current {
+  box-shadow: 0 0 0 2px rgba(197,162,125,.55), 0 18px 56px rgba(197,162,125,.28);
 }
 
 .cs-price-card__tag {
@@ -2018,9 +2032,24 @@ body {
 }
 .cs-theme-modal__body {
   padding: 1rem;
+  color: rgba(255, 255, 255, .92);
+}
+.cs-theme-modal__body p,
+.cs-theme-modal__body label,
+.cs-theme-modal__body span,
+.cs-theme-modal__body li {
+  color: rgba(255, 255, 255, .9);
+}
+.cs-theme-modal__footer {
+  color: rgba(255, 255, 255, .9);
 }
 .cs-theme-modal .cs-app-form .cs-field label {
   color: rgba(255,255,255,.8);
+}
+.cs-theme-modal .form-control {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.2);
 }
 
 /* ════════════════════════════════════════════════════════════════════════

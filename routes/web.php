@@ -57,6 +57,16 @@ Route::get('/', [FrontendController::class, 'index']);
 Route::get('/pricing', function () {
     return view('frontend/pricing');
 });
+
+Route::get('/billing/checkout/{plan}', [\App\Http\Controllers\StripeCheckoutController::class, 'checkout'])
+    ->name('billing.checkout');
+Route::get('/billing/success', [\App\Http\Controllers\StripeCheckoutController::class, 'success'])
+    ->name('billing.success');
+Route::get('/billing/portal', [\App\Http\Controllers\StripeCheckoutController::class, 'portal'])
+    ->middleware('auth')
+    ->name('billing.portal');
+Route::post('/billing/webhook/stripe', [\App\Http\Controllers\StripeCheckoutController::class, 'webhook'])
+    ->name('billing.webhook.stripe');
 Route::get('/contact', function () {
     return view('frontend/contact');
 });

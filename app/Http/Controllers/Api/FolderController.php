@@ -420,16 +420,6 @@ $user = Auth::guard('api')->user();
     
     
 
-    if ($user->is_trial == 'false') {
-        return $this->sendError(
-            $result = null,
-            $message = 'Trial expired. Please upgrade your account.',
-            $notification = [],
-            $error = [],
-            $respose_code = 403
-        );
-    }
-
     $emails = $request->input('emails');
     if (is_string($emails)) {
         $decoded = json_decode($emails, true);
@@ -448,6 +438,17 @@ $user = Auth::guard('api')->user();
 
     if ($emails->isEmpty() || $emails->contains(fn ($email) => !filter_var($email, FILTER_VALIDATE_EMAIL))) {
         return $this->sendError(null, 'At least one valid recipient email is required.', [], [], 422);
+    }
+
+    $gate = app(\App\Services\EntitlementService::class)->canSend($user, $emails->count());
+    if (! $gate['ok']) {
+        return $this->sendError(
+            $result = ['upgrade_url' => url('/pricing'), 'code' => $gate['code']],
+            $message = $gate['reason'],
+            $notification = [],
+            $error = [],
+            $respose_code = 403
+        );
     }
 
     // Validate file upload
@@ -509,11 +510,7 @@ $user = Auth::guard('api')->user();
         ];
     }
 
-    // Check trial count per recipient request.
-    $count = DB::table('signatures')->where('user_id', $user_id)->count();
-    if ($count >= 5) {
-        DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']);
-    }
+    app(\App\Services\EntitlementService::class)->recordSendAfterInsert((int) $user_id, $emails->count());
 
     return $this->sendResponse(
         $result = [

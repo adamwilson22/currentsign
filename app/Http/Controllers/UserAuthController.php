@@ -26,6 +26,11 @@ class UserAuthController extends Controller {
         $credentials = $request->only('email', 'password');
         
         if (Auth::guard('web')->attempt($credentials)) {
+            $checkoutPlan = session()->pull('stripe_checkout_plan');
+            if ($checkoutPlan) {
+                return redirect('/billing/checkout/' . $checkoutPlan);
+            }
+
             return redirect()->intended('/profile')->withSuccess('You have Successfully logged in');
         }
         return redirect("/login")->withInput()->withErrors(['error' => 'Oops! You have entered invalid credentials']);
@@ -82,8 +87,21 @@ class UserAuthController extends Controller {
     
     public function update_profile(Request $request) {
         $user = Auth::user();
-        $data = $request->all();
-        $user->update($data);
+        $allowed = ['full_name', 'email', 'mobile_number', 'address', 'dob', 'gender', 'country_code', 'image'];
+        $data = $request->only($allowed);
+        $payload = [];
+        foreach ($data as $key => $value) {
+            if (Schema::hasColumn('users', $key)) {
+                $payload[$key] = $value;
+            }
+        }
+        if (isset($payload['full_name']) && Schema::hasColumn('users', 'name')) {
+            $payload['name'] = $payload['full_name'];
+        }
+        if ($payload === []) {
+            return redirect()->back()->withErrors(['error' => 'No profile fields available to update.']);
+        }
+        $user->update($payload);
         return redirect()->back()->with('success', 'Profile updated successfully!');
     }
     
@@ -338,36 +356,76 @@ return redirect()->back()->with('success', 'Send successfully!');
 
 public function submitsignacture(Request $request)
 {
+    $pendingService = app(\App\Services\PendingSignatureSend::class);
+    $pending = $pendingService->get();
+    $usingPending = $request->boolean('use_pending')
+        && $pending
+        && (int) ($pending['user_id'] ?? 0) === (int) auth()->id()
+        && is_file(public_path($pending['pdf_path'] ?? ''));
+
+    $rules = [
+        'email' => 'nullable|email',
+        'page' => 'nullable|integer|min:1',
+    ];
+    if (! $usingPending) {
+        $rules['pdf_path'] = 'required|file|mimes:pdf|max:20480';
+    }
+    $request->validate($rules);
+
     $user_id = auth()->id();
     $user = DB::table('users')->where('id', $user_id)->first();
 
-    if ($user->is_trial == 'false') {
-        // return redirect()->back()->with('error', 'Trial expired. Please upgrade your account.');
+    $gate = app(\App\Services\EntitlementService::class)->canSend($user);
+    if (! $gate['ok']) {
+        if ($usingPending) {
+            // Keep existing stash; refresh email/page from form.
+            $pending['email'] = (string) $request->input('email', $pending['email'] ?? '');
+            $pending['page'] = max(1, (int) $request->input('page', $pending['page'] ?? 1));
+            session([\App\Services\PendingSignatureSend::SESSION_KEY => $pending]);
+        } else {
+            $pending = $pendingService->stashFromRequest($request, (int) $user_id);
+        }
+
+        return redirect()->to($pending['return_url'] ?? url('/user/dashboard'))
+            ->with('show_upgrade_prompt', true)
+            ->with('upgrade_prompt_reason', $gate['reason'])
+            ->with('upgrade_prompt_code', $gate['code']);
     }
 
-    // ✅ PDF Upload
-    $file = $request->file('pdf_path');
-    $fileName = time() . '_' . $file->getClientOriginalName();
-    $filePath = 'uploads/folders/';
-    $destinationPath = public_path($filePath);
-    $file->move($destinationPath, $fileName);
+    if ($usingPending) {
+        $storedPath = $pending['pdf_path'];
+        $emailid = $request->input('email', $pending['email'] ?? '');
+        $page = max(1, (int) $request->input('page', $pending['page'] ?? 1));
+    } else {
+        $file = $request->file('pdf_path');
+        $fileName = time() . '_' . $file->getClientOriginalName();
+        $filePath = 'uploads/folders/';
+        $destinationPath = public_path($filePath);
+        if (! is_dir($destinationPath)) {
+            mkdir($destinationPath, 0755, true);
+        }
+        $file->move($destinationPath, $fileName);
+        $storedPath = $filePath . $fileName;
+        $emailid = $request->email;
+        $page = max(1, (int) $request->input('page', 1));
+    }
 
-    // ✅ Save Data
-    $data = $request->except('_token');
-    $data['pdf_path'] = $filePath . $fileName;
-    $data['user_id'] = $user_id;
-    $data['status'] = 'Awaiting';
+    $data = [
+        'pdf_path' => $storedPath,
+        'user_id' => $user_id,
+        'email' => $emailid,
+        'status' => 'Awaiting',
+    ];
+    if (\Illuminate\Support\Facades\Schema::hasColumn('signatures', 'page')) {
+        $data['page'] = $page;
+    }
 
     $id = DB::table('signatures')->insertGetId($data);
 
-    // ✅ Trial Count
-    $count = DB::table('signatures')->where('user_id', $user_id)->count();
-    if ($count >= 5) {
-        DB::table('users')->where('id', $user_id)->update(['is_trial' => 'false']);
-    }
+    app(\App\Services\EntitlementService::class)->recordSendAfterInsert((int) $user_id);
+    $pendingService->clear();
+    session()->forget('billing_return_url');
 
-    // ✅ Email Send (SMTP) — don't fail the whole submit if mail is unreachable
-    $emailid = $request->email;
     $link = url('/signature?id=' . $id);
     $mailOk = false;
 
@@ -397,11 +455,9 @@ public function submitsignacture(Request $request)
 
     $flash = $mailOk
         ? 'Document sent successfully to ' . $emailid . '.'
-        : 'Document saved. Email could not be delivered — use the signing link below.';
+        : 'Document saved for ' . ($emailid ?: 'recipient') . '.';
 
-    return redirect()->back()
-        ->with('success', $flash)
-        ->with('signing_link', $link);
+    return redirect()->back()->with('success', $flash);
 }
 
 
