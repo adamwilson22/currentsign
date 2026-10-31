@@ -33,11 +33,14 @@ class StripeClient
         return $client;
     }
 
-    public function post(string $path, array $form): array
+    public function post(string $path, array $form, array $headers = []): array
     {
-        $response = $this->http()
-            ->asForm()
-            ->post($this->base() . $path, $form);
+        $request = $this->http()->asForm();
+        if ($headers !== []) {
+            $request = $request->withHeaders($headers);
+        }
+
+        $response = $request->post($this->base() . $path, $form);
 
         $json = $response->json() ?? [];
         if (! $response->successful()) {
@@ -46,6 +49,16 @@ class StripeClient
         }
 
         return $json;
+    }
+
+    /** Ephemeral keys require a Stripe-Version header. */
+    public function createEphemeralKey(string $customerId, string $apiVersion = '2023-10-16'): array
+    {
+        return $this->post('/ephemeral_keys', [
+            'customer' => $customerId,
+        ], [
+            'Stripe-Version' => $apiVersion,
+        ]);
     }
 
     public function get(string $path, array $query = []): array

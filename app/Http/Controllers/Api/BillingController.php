@@ -107,10 +107,10 @@ class BillingController extends Controller
     }
 
     /**
-     * Mobile: create a Stripe Checkout Session (Bearer auth) and return the hosted URL.
-     * Avoids opening /billing/checkout in an unauthenticated browser tab (404 / login loop).
+     * Mobile Stripe Payment Sheet params (card entry in-app).
+     * Creates an incomplete subscription + PaymentIntent client_secret.
      */
-    public function createCheckout(Request $request)
+    public function createPaymentSheet(Request $request)
     {
         if (! Auth::guard('api')->check()) {
             return $this->sendError(null, 'Unauthorized.', [], [], 401);
@@ -130,6 +130,11 @@ class BillingController extends Controller
             return $this->sendError(null, 'Unknown plan.', [], [], 422);
         }
 
+        $publishable = config('stripe.publishable');
+        if (! $publishable) {
+            return $this->sendError(null, 'STRIPE_PUBLISHABLE_KEY is not configured.', [], [], 500);
+        }
+
         $user = Auth::guard('api')->user();
         $stripe = app(StripeClient::class);
 
@@ -147,60 +152,61 @@ class BillingController extends Controller
                 }
             }
 
-            $priceId = config('stripe.prices.' . $plan);
-            $successUrl = url('/billing/success') . '?session_id={CHECKOUT_SESSION_ID}&mobile=1';
-            $cancelUrl = url('/pricing') . '?canceled=1&mobile=1';
+            $ephemeral = $stripe->createEphemeralKey($customerId);
 
-            $payload = [
-                'mode' => 'subscription',
+            $priceId = config('stripe.prices.' . $plan);
+            $subPayload = [
                 'customer' => $customerId,
-                'success_url' => $successUrl,
-                'cancel_url' => $cancelUrl,
-                'client_reference_id' => (string) $user->id,
+                'payment_behavior' => 'default_incomplete',
+                'payment_settings[save_default_payment_method]' => 'on_subscription',
+                'expand[]' => 'latest_invoice.payment_intent',
                 'metadata[user_id]' => (string) $user->id,
                 'metadata[plan_id]' => $plan,
-                'subscription_data[metadata][user_id]' => (string) $user->id,
-                'subscription_data[metadata][plan_id]' => $plan,
             ];
 
             if ($priceId) {
-                $payload['line_items[0][price]'] = $priceId;
-                $payload['line_items[0][quantity]'] = 1;
+                $subPayload['items[0][price]'] = $priceId;
             } else {
-                $payload['line_items[0][price_data][currency]'] = config('stripe.currency', 'usd');
-                $payload['line_items[0][price_data][unit_amount]'] = $planMeta['amount'];
-                $payload['line_items[0][price_data][recurring][interval]'] = 'month';
-                $payload['line_items[0][price_data][product_data][name]'] = 'CurrentSign ' . $planMeta['name'];
-                $payload['line_items[0][price_data][product_data][metadata][plan_id]'] = $plan;
-                $payload['line_items[0][quantity]'] = 1;
+                $subPayload['items[0][price_data][currency]'] = config('stripe.currency', 'usd');
+                $subPayload['items[0][price_data][unit_amount]'] = $planMeta['amount'];
+                $subPayload['items[0][price_data][recurring][interval]'] = 'month';
+                $subPayload['items[0][price_data][product_data][name]'] = 'CurrentSign ' . $planMeta['name'];
+                $subPayload['items[0][price_data][product_data][metadata][plan_id]'] = $plan;
             }
 
-            $session = $stripe->post('/checkout/sessions', $payload);
-            if (empty($session['url']) || empty($session['id'])) {
-                return $this->sendError(null, 'Unable to start Stripe Checkout.', [], [], 500);
+            $subscription = $stripe->post('/subscriptions', $subPayload);
+            $invoice = $subscription['latest_invoice'] ?? null;
+            $paymentIntent = is_array($invoice) ? ($invoice['payment_intent'] ?? null) : null;
+            $clientSecret = is_array($paymentIntent) ? ($paymentIntent['client_secret'] ?? null) : null;
+
+            if (! $clientSecret || empty($subscription['id'])) {
+                return $this->sendError(null, 'Unable to start Payment Sheet.', [], [], 500);
             }
 
             return $this->sendResponse([
-                'checkout_url' => $session['url'],
-                'session_id' => $session['id'],
+                'payment_intent_client_secret' => $clientSecret,
+                'ephemeral_key' => $ephemeral['secret'] ?? null,
+                'customer_id' => $customerId,
+                'subscription_id' => $subscription['id'],
+                'publishable_key' => $publishable,
                 'plan_id' => $plan,
-            ], 'Checkout session created.');
+            ], 'Payment Sheet ready.');
         } catch (\Throwable $e) {
-            Log::error('API billing checkout failed', ['error' => $e->getMessage()]);
+            Log::error('API payment sheet failed', ['error' => $e->getMessage()]);
 
             return $this->sendError(null, $e->getMessage(), [], [], 500);
         }
     }
 
-    /** After mobile Stripe Checkout success — sync entitlement from session_id. */
-    public function completeCheckout(Request $request)
+    /** After Payment Sheet succeeds — activate plan from Stripe subscription. */
+    public function completePaymentSheet(Request $request)
     {
         if (! Auth::guard('api')->check()) {
             return $this->sendError(null, 'Unauthorized.', [], [], 401);
         }
 
         $validator = Validator::make($request->all(), [
-            'session_id' => 'required|string',
+            'subscription_id' => 'required|string',
         ]);
         if ($validator->fails()) {
             return $this->sendError(null, $validator->errors()->first(), [], [], 422);
@@ -210,37 +216,51 @@ class BillingController extends Controller
         $stripe = app(StripeClient::class);
 
         try {
-            $session = $stripe->get('/checkout/sessions/' . $request->input('session_id'), [
-                'expand[]' => 'subscription',
+            $subscriptionId = (string) $request->input('subscription_id');
+            $subscription = $stripe->get('/subscriptions/' . $subscriptionId, [
+                'expand[]' => 'latest_invoice.payment_intent',
             ]);
+            $status = strtolower((string) ($subscription['status'] ?? ''));
 
-            if (($session['payment_status'] ?? '') !== 'paid' && ($session['status'] ?? '') !== 'complete') {
-                return $this->sendError(null, 'Payment not completed yet.', [], [], 402);
+            // Payment Sheet just succeeded — Stripe may still report incomplete for a moment.
+            if ($status === 'incomplete') {
+                usleep(800000);
+                $subscription = $stripe->get('/subscriptions/' . $subscriptionId, [
+                    'expand[]' => 'latest_invoice.payment_intent',
+                ]);
+                $status = strtolower((string) ($subscription['status'] ?? ''));
             }
 
-            $refUser = (int) ($session['client_reference_id'] ?? 0);
-            if ($refUser && $refUser !== (int) $user->id) {
-                return $this->sendError(null, 'Session does not belong to this account.', [], [], 403);
+            $piStatus = strtolower((string) (
+                $subscription['latest_invoice']['payment_intent']['status']
+                ?? ''
+            ));
+            $paidOk = in_array($status, ['active', 'trialing'], true)
+                || $piStatus === 'succeeded';
+
+            if (! $paidOk) {
+                return $this->sendError(null, 'Subscription not paid yet (status: ' . $status . ').', [], [], 402);
             }
 
-            $planId = $session['metadata']['plan_id']
-                ?? ($session['subscription']['metadata']['plan_id'] ?? null);
-            $customerId = is_string($session['customer'] ?? null)
-                ? $session['customer']
-                : ($session['customer']['id'] ?? null);
-            $subscription = $session['subscription'] ?? null;
-            $subscriptionId = is_string($subscription) ? $subscription : ($subscription['id'] ?? null);
-            $periodEnd = is_array($subscription) ? ($subscription['current_period_end'] ?? null) : null;
+            $customerId = is_string($subscription['customer'] ?? null)
+                ? $subscription['customer']
+                : ($subscription['customer']['id'] ?? null);
+            $metaUser = (int) ($subscription['metadata']['user_id'] ?? 0);
+            if ($metaUser && $metaUser !== (int) $user->id) {
+                return $this->sendError(null, 'Subscription does not belong to this account.', [], [], 403);
+            }
 
+            $planId = $subscription['metadata']['plan_id'] ?? null;
             if (! $planId) {
-                return $this->sendError(null, 'Plan missing on checkout session.', [], [], 422);
+                return $this->sendError(null, 'Plan missing on subscription.', [], [], 422);
             }
 
+            $periodEnd = $subscription['current_period_end'] ?? null;
             app(EntitlementService::class)->activatePlan(
                 (int) $user->id,
                 $planId,
                 $customerId,
-                $subscriptionId,
+                $subscription['id'] ?? null,
                 $periodEnd ? (string) $periodEnd : null,
                 'stripe',
                 $planId
@@ -248,10 +268,25 @@ class BillingController extends Controller
 
             return $this->entitlement($request);
         } catch (\Throwable $e) {
-            Log::error('API billing complete failed', ['error' => $e->getMessage()]);
+            Log::error('API payment sheet complete failed', ['error' => $e->getMessage()]);
 
             return $this->sendError(null, $e->getMessage(), [], [], 500);
         }
+    }
+
+    /** @deprecated Prefer payment-sheet; kept for older app builds. */
+    public function createCheckout(Request $request)
+    {
+        return $this->createPaymentSheet($request);
+    }
+
+    public function completeCheckout(Request $request)
+    {
+        if ($request->filled('subscription_id')) {
+            return $this->completePaymentSheet($request);
+        }
+
+        return $this->sendError(null, 'subscription_id required.', [], [], 422);
     }
 
     public function verifyIap(Request $request)

@@ -143,6 +143,8 @@ Route::prefix('home')->group(function () {
      Route::post('iap/restore', [BillingController::class, 'restoreIap']);
      Route::post('checkout', [BillingController::class, 'createCheckout']);
      Route::post('checkout/complete', [BillingController::class, 'completeCheckout']);
+     Route::post('payment-sheet', [BillingController::class, 'createPaymentSheet']);
+     Route::post('payment-sheet/complete', [BillingController::class, 'completePaymentSheet']);
      Route::get('transactions', [BillingController::class, 'transactions']);
      Route::post('transactions', [BillingController::class, 'transactions']);
      Route::get('transactions/{id}', [BillingController::class, 'transactionDetail']);
