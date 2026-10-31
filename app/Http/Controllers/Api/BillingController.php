@@ -130,10 +130,9 @@ class BillingController extends Controller
             return $this->sendError(null, 'Unknown plan.', [], [], 422);
         }
 
-        $publishable = config('stripe.publishable');
-        if (! $publishable) {
-            return $this->sendError(null, 'STRIPE_PUBLISHABLE_KEY is not configured.', [], [], 500);
-        }
+        // Publishable key is optional here — mobile can use its bundled pk_*.
+        // Secret key must exist on the server for StripeClient.
+        $publishable = config('stripe.publishable') ?: null;
 
         $user = Auth::guard('api')->user();
         $stripe = app(StripeClient::class);

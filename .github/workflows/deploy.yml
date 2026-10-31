@@ -28,6 +28,22 @@ jobs:
             if [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
               /opt/alt/php84/usr/bin/php artisan passport:keys --force
             fi
+            # Ensure Stripe keys exist in production .env when provided as Actions secrets.
+            ENV_FILE=/home/curropui/public_html/.env
+            if [ -f "$ENV_FILE" ]; then
+              upsert_env() {
+                KEY="$1"; VAL="$2"
+                [ -z "$VAL" ] && return 0
+                if grep -q "^${KEY}=" "$ENV_FILE"; then
+                  sed -i "s|^${KEY}=.*|${KEY}=${VAL}|" "$ENV_FILE"
+                else
+                  printf "\n%s=%s\n" "$KEY" "$VAL" >> "$ENV_FILE"
+                fi
+              }
+              upsert_env STRIPE_SECRET_KEY "${{ secrets.STRIPE_SECRET_KEY }}"
+              upsert_env STRIPE_PUBLISHABLE_KEY "${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
+              upsert_env STRIPE_CURRENCY "${{ secrets.STRIPE_CURRENCY }}"
+            fi
             /opt/alt/php84/usr/bin/php artisan config:cache
             /opt/alt/php84/usr/bin/php artisan route:cache
             /opt/alt/php84/usr/bin/php artisan view:cache
