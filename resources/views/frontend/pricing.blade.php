@@ -78,8 +78,20 @@
                 ],
             ] as $planId => $planMeta)
                 @php
+                    $rank = ['basic' => 1, 'standard' => 2, 'premium' => 3];
                     $isCurrent = $currentPlan === $planId;
                     $isFeatured = $isCurrent || (! $planActive && ! empty($planMeta['default_featured']));
+                    $currentRank = $rank[$currentPlan] ?? 0;
+                    $targetRank = $rank[$planId] ?? 0;
+                    if (! $planActive) {
+                        $ctaLabel = 'Upgrade now';
+                    } elseif ($targetRank > $currentRank) {
+                        $ctaLabel = 'Upgrade now';
+                    } elseif ($targetRank < $currentRank) {
+                        $ctaLabel = 'Downgrade';
+                    } else {
+                        $ctaLabel = 'Manage plan';
+                    }
                     $cardClass = 'cs-price-card';
                     if ($isCurrent) {
                         $cardClass .= ' cs-price-card--current cs-price-card--featured';
@@ -111,8 +123,8 @@
                     @if($isCurrent)
                         <a href="{{ url('/billing/portal') }}" class="cs-btn cs-btn--primary cs-price-card__cta">Manage plan</a>
                     @else
-                        <a href="{{ url('/billing/checkout/' . $planId) }}" class="cs-btn {{ $isFeatured ? 'cs-btn--primary' : 'cs-btn--ghost-white' }} cs-price-card__cta">
-                            {{ $planActive ? 'Switch to ' . $planMeta['name'] : 'Upgrade now' }}
+                        <a href="{{ url('/billing/checkout/' . $planId) }}" class="cs-btn {{ ($targetRank > $currentRank || ! $planActive) ? 'cs-btn--primary' : 'cs-btn--ghost-white' }} cs-price-card__cta">
+                            {{ $ctaLabel }}
                         </a>
                     @endif
                 </article>

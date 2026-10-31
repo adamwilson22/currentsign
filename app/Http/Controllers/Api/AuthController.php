@@ -64,6 +64,12 @@ class AuthController extends Controller
             }
         }
 
+        $emailForAuth = $credentials['email'] ?? null;
+        $userRow = $emailForAuth ? User::where('email', $emailForAuth)->first() : null;
+        if (! $userRow) {
+            return $this->sendError($result = null, $message = 'No account found for this email.', $notification = null, $error = null, $respose_code = 200);
+        }
+
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
             try {
@@ -80,9 +86,19 @@ class AuthController extends Controller
                     200
                 );
             }
-        } else {
-            return $this->sendError($result = null, $message = 'Invalid credentials.', $notification = null, $error = null, $respose_code = 200);
         }
+
+        $plain = (string) $password;
+        $hash = (string) $userRow->getRawOriginal('password');
+        \Log::warning('login invalid credentials', [
+            'email' => $emailForAuth,
+            'pass_len' => strlen($plain),
+            'pass_tip' => strlen($plain) ? (substr($plain, 0, 1) . '..' . substr($plain, -1)) : null,
+            'hash_prefix' => substr($hash, 0, 7),
+            'hash_check' => Hash::check($plain, $hash),
+        ]);
+
+        return $this->sendError($result = null, $message = 'Invalid credentials.', $notification = null, $error = null, $respose_code = 200);
     }
 
 
