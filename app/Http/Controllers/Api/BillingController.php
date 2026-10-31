@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\EntitlementService;
+use App\Services\StripeClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use Validator;
@@ -102,6 +104,154 @@ class BillingController extends Controller
             'current_period_end' => $sub->current_period_end ?? $snap['current_period_end'],
             'upgrade_url' => url('/pricing'),
         ]), 'Entitlement fetched.');
+    }
+
+    /**
+     * Mobile: create a Stripe Checkout Session (Bearer auth) and return the hosted URL.
+     * Avoids opening /billing/checkout in an unauthenticated browser tab (404 / login loop).
+     */
+    public function createCheckout(Request $request)
+    {
+        if (! Auth::guard('api')->check()) {
+            return $this->sendError(null, 'Unauthorized.', [], [], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'plan_id' => 'required|string|in:basic,standard,premium',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError(null, $validator->errors()->first(), [], [], 422);
+        }
+
+        $plan = strtolower((string) $request->input('plan_id'));
+        $plans = config('stripe.plans');
+        $planMeta = $plans[$plan] ?? null;
+        if (! $planMeta) {
+            return $this->sendError(null, 'Unknown plan.', [], [], 422);
+        }
+
+        $user = Auth::guard('api')->user();
+        $stripe = app(StripeClient::class);
+
+        try {
+            $customerId = $user->stripe_customer_id ?? null;
+            if (! $customerId) {
+                $customer = $stripe->post('/customers', [
+                    'email' => $user->email,
+                    'name' => $user->full_name ?? $user->name ?? '',
+                    'metadata[user_id]' => (string) $user->id,
+                ]);
+                $customerId = $customer['id'];
+                if (Schema::hasColumn('users', 'stripe_customer_id')) {
+                    DB::table('users')->where('id', $user->id)->update(['stripe_customer_id' => $customerId]);
+                }
+            }
+
+            $priceId = config('stripe.prices.' . $plan);
+            $successUrl = url('/billing/success') . '?session_id={CHECKOUT_SESSION_ID}&mobile=1';
+            $cancelUrl = url('/pricing') . '?canceled=1&mobile=1';
+
+            $payload = [
+                'mode' => 'subscription',
+                'customer' => $customerId,
+                'success_url' => $successUrl,
+                'cancel_url' => $cancelUrl,
+                'client_reference_id' => (string) $user->id,
+                'metadata[user_id]' => (string) $user->id,
+                'metadata[plan_id]' => $plan,
+                'subscription_data[metadata][user_id]' => (string) $user->id,
+                'subscription_data[metadata][plan_id]' => $plan,
+            ];
+
+            if ($priceId) {
+                $payload['line_items[0][price]'] = $priceId;
+                $payload['line_items[0][quantity]'] = 1;
+            } else {
+                $payload['line_items[0][price_data][currency]'] = config('stripe.currency', 'usd');
+                $payload['line_items[0][price_data][unit_amount]'] = $planMeta['amount'];
+                $payload['line_items[0][price_data][recurring][interval]'] = 'month';
+                $payload['line_items[0][price_data][product_data][name]'] = 'CurrentSign ' . $planMeta['name'];
+                $payload['line_items[0][price_data][product_data][metadata][plan_id]'] = $plan;
+                $payload['line_items[0][quantity]'] = 1;
+            }
+
+            $session = $stripe->post('/checkout/sessions', $payload);
+            if (empty($session['url']) || empty($session['id'])) {
+                return $this->sendError(null, 'Unable to start Stripe Checkout.', [], [], 500);
+            }
+
+            return $this->sendResponse([
+                'checkout_url' => $session['url'],
+                'session_id' => $session['id'],
+                'plan_id' => $plan,
+            ], 'Checkout session created.');
+        } catch (\Throwable $e) {
+            Log::error('API billing checkout failed', ['error' => $e->getMessage()]);
+
+            return $this->sendError(null, $e->getMessage(), [], [], 500);
+        }
+    }
+
+    /** After mobile Stripe Checkout success — sync entitlement from session_id. */
+    public function completeCheckout(Request $request)
+    {
+        if (! Auth::guard('api')->check()) {
+            return $this->sendError(null, 'Unauthorized.', [], [], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'session_id' => 'required|string',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError(null, $validator->errors()->first(), [], [], 422);
+        }
+
+        $user = Auth::guard('api')->user();
+        $stripe = app(StripeClient::class);
+
+        try {
+            $session = $stripe->get('/checkout/sessions/' . $request->input('session_id'), [
+                'expand[]' => 'subscription',
+            ]);
+
+            if (($session['payment_status'] ?? '') !== 'paid' && ($session['status'] ?? '') !== 'complete') {
+                return $this->sendError(null, 'Payment not completed yet.', [], [], 402);
+            }
+
+            $refUser = (int) ($session['client_reference_id'] ?? 0);
+            if ($refUser && $refUser !== (int) $user->id) {
+                return $this->sendError(null, 'Session does not belong to this account.', [], [], 403);
+            }
+
+            $planId = $session['metadata']['plan_id']
+                ?? ($session['subscription']['metadata']['plan_id'] ?? null);
+            $customerId = is_string($session['customer'] ?? null)
+                ? $session['customer']
+                : ($session['customer']['id'] ?? null);
+            $subscription = $session['subscription'] ?? null;
+            $subscriptionId = is_string($subscription) ? $subscription : ($subscription['id'] ?? null);
+            $periodEnd = is_array($subscription) ? ($subscription['current_period_end'] ?? null) : null;
+
+            if (! $planId) {
+                return $this->sendError(null, 'Plan missing on checkout session.', [], [], 422);
+            }
+
+            app(EntitlementService::class)->activatePlan(
+                (int) $user->id,
+                $planId,
+                $customerId,
+                $subscriptionId,
+                $periodEnd ? (string) $periodEnd : null,
+                'stripe',
+                $planId
+            );
+
+            return $this->entitlement($request);
+        } catch (\Throwable $e) {
+            Log::error('API billing complete failed', ['error' => $e->getMessage()]);
+
+            return $this->sendError(null, $e->getMessage(), [], [], 500);
+        }
     }
 
     public function verifyIap(Request $request)
